@@ -456,3 +456,68 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [data-volume, episode-length, demos, planning, units]
+  - id: aalto-execution-horizon
+    name: "The statistically strongest evidence for executing short: h=10-15, not 50"
+    url: "https://aaltodoc.aalto.fi/items/711175d6-6d75-4751-af72-b055bd8cd4db/full"
+    type: benchmark
+    what: >
+      Pooled over five checkpoints at **n = 500 paired episodes per horizon** (binomial standard
+      error 2.2), the success curve is unimodal with a plateau at an execution horizon of **10 to
+      15, reaching 51%**, with every other grid point significantly worse under a paired exact
+      binomial test (p <= 0.005), and it **falls to 34% at the fully open-loop horizon of 50**.
+      The same work reports that an offline trajectory-similarity metric reliably *selects* that
+      horizon, so you can choose it **without running rollouts**.
+    why: >
+      This upgrades "predict long, execute short" from a plausible heuristic to a tested finding.
+      We already carry SmolVLA's Table 13, which points the same way but is a single-run
+      ablation; this is the version with paired sampling and an explicit significance test, and
+      it puts a number on the cost of getting it wrong: **halving success if you execute the
+      whole chunk.**
+      The offline-selectability result is the practically useful half. Execution horizon is
+      normally something you sweep with robot time, and here is evidence you can estimate it from
+      trajectories you already have.
+    maturity: research
+    verified: 2026-09
+    tags: [execution-horizon, chunking, significance, offline-selection, benchmark]
+    notes: >
+      Read alongside ACT's ablation (1% at k=1 rising to 44% at k=100, degrading at k=200 and
+      400) and you get an apparent contradiction: ACT peaks at 100 while these policies peak at
+      10-15. It is not a contradiction — the optimum scales with the control rate and the length
+      of the motion primitive, not with the paper you copied. Scale your horizon to your own
+      control loop.
+  - id: openvla-demo-replay
+    name: "9-24% of a benchmark dataset failed its own success criterion"
+    url: "https://arxiv.org/abs/2406.09246"
+    type: paper
+    what: >
+      To train on LIBERO, the OpenVLA authors replayed **every demonstration** and discarded the
+      ones that failed their own task: 68 of 500 on LIBERO-Spatial, 46 of 500 on
+      LIBERO-Object, 72 of 500 on LIBERO-Goal, and 121 of 500 on LIBERO-Long. Two related
+      details from the same passage: they had to **rotate the third-person images 180 degrees**
+      because LIBERO returns them upside-down on their hardware, and they trained on the static
+      third-person camera only.
+    why: >
+      A benchmark dataset, published by competent people, with 9 to 24 percent of its
+      demonstrations failing the task they are labelled as succeeding at. If you are blaming your
+      model for a poor result on public data, this is the prior that should make you replay your
+      own data first. It also generalises: the cheapest quality gate in this entire repo is to
+      replay every demonstration in simulation and check whether it actually solves the task —
+      and it is a gate almost nobody runs before training.
+      The 180-degree rotation is a reminder that visual conventions are undocumented and silent,
+      the same failure family as the gripper polarity entry.
+    maturity: production
+    verified: 2026-09
+    tags: [data-quality, replay-check, libero, benchmark, prior]
+  - id: checkpoint-write-oom
+    name: "OOM while writing a checkpoint, hours into a healthy-looking run"
+    url: "https://github.com/moojink/openvla-oft/issues/118"
+    type: discussion
+    what: "Reported out-of-memory failure occurring while writing checkpoints at step 100,000, rather than during the training step itself."
+    why: >
+      A late-failure class worth knowing about, because it appears long after you have concluded
+      the configuration works. Memory pressure at save boundaries is not visible in the step-time
+      or loss curves, so the only defence is to size the run for peak memory including the save
+      path, or to test a save early rather than discovering the limit at hour twenty.
+    maturity: research
+    verified: 2026-09
+    tags: [oom, checkpointing, memory, late-failure]

@@ -27,6 +27,11 @@ robot, not at your desk.
 - [ ] Latency measured end to end, **p99 not mean**
 - [ ] Feasibility margin `D_c / L` computed and above your jitter budget
       ([arithmetic](../docs/41-real-time-inference.md))
+- [ ] **Execution horizon swept, not assumed.** The best-controlled public measurement
+      (n=500 paired episodes per horizon, p<=0.005) peaks at an execution horizon of **10-15**
+      and falls to **34% at a fully open-loop 50** — a halving of success. Do not execute the
+      whole predicted chunk by default, and check the offline-selectability result if you would
+      rather not spend robot time finding the number
 
 ## Observability
 

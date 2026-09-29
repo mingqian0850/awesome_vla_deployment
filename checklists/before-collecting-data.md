@@ -51,6 +51,12 @@ A `templates/collection-log.csv` is provided.
 
 ## Before you scale up
 
+- [ ] **Replay every demonstration and check it actually solves the task.** This is the cheapest
+      quality gate in this repo and almost nobody runs it. For scale: the OpenVLA authors
+      replayed LIBERO and discarded **68/500, 46/500, 72/500 and 121/500** demonstrations across
+      the four suites — that is **9-24% of a published benchmark dataset failing its own success
+      criterion**. If public data published by competent people has that rate, assume yours does
+      too, and find out before you train rather than after.
 - [ ] **Train on the first ~20% and evaluate.** Finding out that your camera was out of focus,
       or that your task is ambiguous, after collecting 500 episodes is the most expensive
       mistake in this document.
