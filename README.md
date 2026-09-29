@@ -119,6 +119,7 @@ The hand-written pages, where the parts that no link can give you live:
   - [Excellent success rate in simulation, poor on hardware.](#excellent-success-rate-in-simulation-poor-on-hardware)
   - [Success rate moves by 20 points between evaluation runs with no code cha](#success-rate-moves-by-20-points-between-evaluation-runs-with-no-code-change)
   - [The policy behaves as if your configuration changes had no effect.](#the-policy-behaves-as-if-your-configuration-changes-had-no-effect)
+  - [Training runs and loss decreases, but the policy behaves as if the data ](#training-runs-and-loss-decreases-but-the-policy-behaves-as-if-the-data-were-never-normalized--or-normalization-appears-to-do-nothing-at-all)
 
 ## Landscape — what already exists
 
@@ -491,7 +492,8 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 **Cause 2 — A dead proprioceptive state channel — the policy is effectively vision-only.**
 
 - **Test:** Print per-dimension mean/std of `observation.state`; a constant or all-zero dimension is dead. Then ablate the state at inference: replace it with zeros and with another frame's state, and measure how far the predicted action chunk moves relative to the natural cross-observation variation. `python scripts/diag_policy.py --dataset <ds> --config <cfg> --test ablate`.
-- **Fix:** pi0.5 feeds the state as discretised tokens into the VLM. Dim order, scale, and the q01/q99 normalisation statistics must match the checkpoint. Recompute the statistics on your own dataset; do not reuse the pretrained ones. If enough state dimensions are dead or mis-scaled, the tokens are constant and phase becomes unobservable.
+- **Fix:** pi0.5 feeds the state as discretised tokens into the VLM rather than as a continuous input, so dim order, scale and the q01/q99 statistics must match the checkpoint. Note that this behaviour is *derived*, not fixed: in openpi, `discrete_state_input` defaults to `None` and is resolved as `discrete_state_input = pi05`, so pi0.5 turns it on and pi0 turns it off — but `pi05_libero` explicitly sets it to `False` because LIBERO has no proprioceptive state. Read the flag from the config rather than assuming. If enough state dimensions are dead or mis-scaled, the tokens are constant and the phase becomes unobservable.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/models/pi0_config.py>
 
 **Cause 3 — The action expert has collapsed to the unconditional mean action.**
 
@@ -656,6 +658,34 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 - **Test:** Recompute the dataset statistics and check whether the loaded checkpoint's stored statistics changed.
 - **Fix:** They will not — LeRobot states that statistics already saved inside an existing checkpoint are not affected by recomputing dataset stats. Start from a checkpoint without embedded statistics, or expect the stored ones to win.
 - **Source:** <https://huggingface.co/docs/lerobot/en/pi05>
+
+### Training runs and loss decreases, but the policy behaves as if the data were never normalized — or normalization appears to do nothing at all.
+
+`severity: high` · `frequency: common`
+
+**Cause 1 — Normalization is silently skipped because the statistics keys do not match, and the code returns the tensor unchanged instead of raising.**
+
+- **Test:** Check which statistics keys the checkpoint actually carries. Multi-dataset checkpoints store them under dataset-prefixed keys such as `so100.buffer.action.mean`, while the lookup uses the bare key `action`. The processor's guard is `if norm_mode == IDENTITY or key not in self._tensor_stats: return tensor` — a silent return, not an error. A minimal check: load the policy, feed a fake action, and test whether the unnormalized output differs from the input.
+- **Fix:** Do not assume normalization is happening because the pipeline contains a normalization step. Verify numerically on one batch — compare `unnormalize(normalize(a))` against `a` and assert the round trip. Reported on `lerobot/smolvla_base`, where normalization and unnormalization are both skipped, and independently confirmed by a third party.
+- **Source:** <https://github.com/huggingface/lerobot/issues/4415>
+
+**Cause 2 — Quantiles were aggregated across merged datasets by averaging per-source quantiles, which is mathematically invalid.**
+
+- **Test:** Count what fraction of your training values fall outside the saved `q01`/`q99`. If it is far above the expected ~2%, the statistics are wrong. This has been measured on a published dataset: on `lerobot/droid_1.0.1`, the shipped action `q01`/`q99` leave between 12.18% and 79.03% of action values outside the per-dimension range, against roughly 2% for exact full-data bounds. On a merged dataset, 41.65% of state joint 1 and 42.12% of action joint 1 values fell outside the saved quantiles while `mean` differed by only 1e-7.
+- **Fix:** Recompute quantiles over all frames rather than merging summaries. A repair tool exists for the DROID case. The reason this matters more than it sounds: everything outside `q01`/`q99` maps outside `[-1, 1]` after normalization, so for pi0.5 a large fraction of normal training samples have normalized targets outside the expected range — which changes the loss scale rather than producing an obvious error.
+- **Source:** <https://github.com/huggingface/lerobot/issues/4156> · <https://github.com/sawhney17/droid-quantile-repair> · <https://github.com/huggingface/lerobot/pull/4172>
+
+**Cause 3 — The statistic key does not match the live camera or feature name, so a required entry is missing.**
+
+- **Test:** Look for an assertion mentioning `infinity` at evaluation time. The legacy buffers are initialised to `+inf` precisely so that a missing statistic is loud — but only if the key is looked up at all.
+- **Fix:** Make the camera names in your robot config match the feature names in the dataset's `meta/stats.json` exactly. This is the canonical mismatch: the data was recorded with one set of camera keys and the robot is configured with another.
+- **Source:** <https://github.com/huggingface/lerobot/issues/1095>
+
+**Cause 4 — A pipeline migration mangled a feature name containing an underscore.**
+
+- **Test:** Print the feature keys the policy declares and compare them against the keys present in the statistics.
+- **Fix:** An unconditional `replace(\"_\", \".\")` during normalization-statistics extraction turns `observation.environment_state` into `observation.environment.state`, which is then never found. The policy's declared feature keys must be treated as authoritative rather than re-derived from the string.
+- **Source:** <https://github.com/huggingface/lerobot/issues/4451>
 
 
 ---
