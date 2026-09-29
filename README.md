@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-99 entries · 36 production · 50 research · 9 toy · 4 abandoned
+102 entries · 36 production · 54 research · 8 toy · 4 abandoned
 
 </div>
 
@@ -120,6 +120,7 @@ The hand-written pages, where the parts that no link can give you live:
   - [Success rate moves by 20 points between evaluation runs with no code cha](#success-rate-moves-by-20-points-between-evaluation-runs-with-no-code-change)
   - [The policy behaves as if your configuration changes had no effect.](#the-policy-behaves-as-if-your-configuration-changes-had-no-effect)
   - [Training runs and loss decreases, but the policy behaves as if the data ](#training-runs-and-loss-decreases-but-the-policy-behaves-as-if-the-data-were-never-normalized--or-normalization-appears-to-do-nothing-at-all)
+  - [Fine-tuning runs to completion and the loss decreases normally, but succ](#fine-tuning-runs-to-completion-and-the-loss-decreases-normally-but-success-rate-is-at-or-near-zero)
 
 ## Landscape — what already exists
 
@@ -322,10 +323,20 @@ Every figure here is quoted from a primary source that was fetched and read, not
 - **[Training-Time Action Conditioning for Efficient Real-Time Chunking](https://arxiv.org/abs/2512.05964)** — `paper` · `research` · verified 2026-09 · #rtc #async #training #latency
   - *What it is:* Trains the policy to accept an action prefix as conditioning, so that asynchronous execution joins smoothly instead of jumping. Exposed in LeRobot as `policy.rtc_training_max_delay`, set to the largest expected inference delay in controller steps.
   - *Why it matters here:* The difference between inference-time RTC, which patches over the chunk-boundary discontinuity, and training-time conditioning, which removes it. If you know your deployment latency at training time, this is the more principled fix.
-- **[LoRA vs full fine-tune vs frozen backbone — the missing comparison](https://github.com/Physical-Intelligence/openpi)** — `paper` · `toy` · verified 2026-09 · #gap #lora #fine-tuning #comparison #wanted
-  - *What it is:* NOT PUBLISHED. Hardware requirements for all three regimes are documented (8 GB inference, 22.5 GB LoRA, 70 GB full), and LeRobot documents that freezing the VLM costs "some success rate" — but no source found publishes the comparative success-rate numbers on a named task with a named dataset.
-  - *Why it matters here:* This is deliberately an entry rather than an omission. It is the single most-asked practical question in VLA fine-tuning, and the answer is currently folklore. If you have run this comparison, contributing the numbers here is worth more than any paper citation in this repo.
-  - *Note:* To contribute: name the base model, the dataset, the number of demonstrations, the GPU, wall-clock time, and success rate with trial count for each of the three regimes. Null results are welcome and useful.
+- **[Full FT vs LoRA vs frozen vs last-layer, with numbers](https://arxiv.org/abs/2406.09246)** — `benchmark` · `research` · verified 2026-09 · #lora #full-finetune #comparison #success-rate #benchmark #frozen-vision
+  - *What it is:* The one rigorous controlled comparison found, from the OpenVLA paper (Table 1), 33 rollouts per strategy on Franka-Tabletop. Success rate / trainable parameters / VRAM at batch 16: full fine-tune 69.7 ± 7.2 % / 7,188 M / 163 GB; LoRA rank 32 68.2 ± 7.5 % / 97.6 M (1.4 %) / 59.7 GB; LoRA rank 64 68.2 ± 7.8 % / 195 M / 60.5 GB; sandwich (vision encoder + embeddings + last layer) 62.1 ± 7.9 % / 914 M / 64.0 GB; frozen vision encoder 47.0 ± 6.9 % / 6,760 M / 156 GB; last layer only 30.3 ± 6.1 % / 465 M / 51.4 GB.
+  - *Why it matters here:* Two conclusions that change how you configure a fine-tune. First, LoRA applied to all linear layers matches full fine-tuning at 1.4 % of the parameters and roughly a third of the memory — LoRA is not the problem people blame it for. Second, and more important: **which modules you update dominates how many.** Freezing the vision encoder costs about 22 points and training only the last layer costs about 39. If you are choosing between LoRA configurations, choose by which modules are in the target list, not by rank.
+  - *Note:* The error bars overlap between full FT and LoRA rank 32, which is the honest reading: at 33 trials you cannot distinguish them. Both being ~68-70 % while frozen-vision is 47 % is the signal.
+- **[LeRobot's default LoRA target list is the trap, not LoRA](https://github.com/huggingface/lerobot/issues/4415)** — `discussion` · `research` · verified 2026-09 · #lora #peft #target-modules #zero-success #trap #smolvla
+  - *What it is:* LeRobot's default PEFT config targets only q/v projections inside the expert plus a handful of projection layers, and sets `modules_to_save` to an empty list — the vision tower and the language backbone are not in the target list. In a controlled SmolVLA / SO-101 experiment on an identical 3698-episode dataset, the default targets trained 742,656 parameters (0.16 %) and **every mid-training evaluation scored 0.0 %**, while full SFT was already at 60 % on its first evaluation. Expanding the target list (three q/v families plus fully training the five embodiment projections, rank 64, lr 3e-4) reached 94.0 / 84.0 / 98.0 % with 9,851,728 trainable parameters (2.1 %) — roughly 1/40 of full SFT's parameters at matched task performance.
+  - *Why it matters here:* This is the highest-value practical finding in the training section, and it is a trap that looks like a data problem. A fine-tune that sits at 0 % success while the loss decreases normally is the signature, and the cause is a parameter budget you never chose deliberately. It also corrects a widespread misconception: the quantity to match across models is the trainable *fraction*, not the rank — the same rank 64 is 2.1 % of SmolVLA but roughly 0.58 % of pi0, because the two models have very different numbers of attention sites.
+  - *Note:* Two command-surface details from the same source. Use `--peft.method_type` / `--peft.r` to attach a new adapter to a clean base; setting `--policy.use_peft=true` instead makes the framework treat `--policy.path` as an already-trained adapter directory, so pointing it at a base model reads a base model as an adapter. And the acceptance test is to read `num_learnable_params` out of the training log rather than trusting your CLI flags — without `--policy.freeze_vision_encoder=false --policy.train_expert_only=false`, SmolVLA reports about 100 M trainable instead of about 403 M.
+- **[pi0.5 fine-tunes worse than pi0 on small single-arm datasets](https://github.com/Physical-Intelligence/openpi/issues/763)** — `discussion` · `research` · verified 2026-09 · #pi05 #loRA #quantile #normalization #small-dataset #action-range
+  - *What it is:* Reported case: pi0.5 fine-tuned with LoRA on the same single-arm data as pi0 performed substantially worse (150k versus 80k steps, 4x A100 40 GB). Suspected contributors: quantile normalisation computed on a small dataset shrinking the effective action range; pi0.5's discretised state plus differing AdamW/EMA configuration; and LoRA applied to both backbones freezing too much. The reported fix was to disable quantile normalisation for small fine-tunes (`use_quantile_norm=False`), align batch size and learning rate with the `pi05_libero` recipe rather than the pi0 defaults, and consider full fine-tuning or expert-only training instead of LoRA everywhere.
+  - *Why it matters here:* Directly relevant to the most common real symptom in this repo — a policy that produces small or hesitant motion. If quantile normalisation on a small dataset compresses the action range, then both the training targets and the decoded outputs are scaled down, and the robot moves less than it should while the loss looks healthy. Check this before concluding that your data is bad.
+- **[pi0.5 at 1% on LIBERO: config drift, not the model](https://github.com/Physical-Intelligence/openpi/issues/711)** — `discussion` · `research` · verified 2026-09 · #pi05 #config-drift #libero #debugging
+  - *What it is:* Reported case of pi0.5 scoring about 1 % on LIBERO against a much higher paper number. The diagnosis was configuration drift: LoRA, `discrete_state_input=False`, a non-standard action horizon, and hand-computed statistics that differed from the checkpoint's — plus ad-hoc learning-rate modifications.
+  - *Why it matters here:* The recommended remedy generalises to every fine-tune in this space: use the shipped config verbatim first, confirm it reproduces, then change exactly one thing at a time. And diff your own `TrainConfig` field by field against the reference config rather than assuming your CLI flags produced the config you intended.
 
 
 ## Deployment — inference timing, optimisation, edge, integration
@@ -511,6 +522,12 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 - **Test:** Open-loop check: put the robot or the recorded state back onto the expert trajectory, feed the expert observation, and see whether the predicted chunk reproduces the expert's continuation. If open loop is fine but closed loop stalls, the model is not the problem.
 - **Fix:** Collect recovery and intermediate-start data: start the robot at the entrance state of every sub-task, including slightly off-expert states. This is the only thing that actually addresses compounding error.
 
+**Cause 6 — Quantile normalisation computed on a small dataset has shrunk the effective action range, so the policy both trains on and emits scaled-down motion.**
+
+- **Test:** Compare the q01/q99 spread of your actions against the range of motion your demonstrations actually contain, and check how much of the training data falls in the middle of the normalised range. Reported in openpi: pi0.5 fine-tuned with LoRA on the same single-arm data as pi0 performed substantially worse, with quantile normalisation on a small dataset named as a contributing cause.
+- **Fix:** The reported fix was to disable quantile normalisation for small fine-tunes (`use_quantile_norm=False`, which requires patching the config), align batch size and learning rate with the shipped `pi05_libero` recipe rather than the pi0 defaults, and consider full fine-tuning or expert-only training rather than LoRA on both backbones. This cause is easy to miss because the loss looks healthy: the targets are scaled down consistently, so the model fits them well while emitting motion too small to do the task. It presents as hesitation or undershoot rather than as an obviously broken policy.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/issues/763> · <https://github.com/Physical-Intelligence/openpi/issues/692>
+
 Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://arxiv.org/abs/2509.07953>
 
 ### The robot hesitates or does not move at the beginning of a rollout, then behaves normally.
@@ -686,6 +703,28 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 - **Test:** Print the feature keys the policy declares and compare them against the keys present in the statistics.
 - **Fix:** An unconditional `replace(\"_\", \".\")` during normalization-statistics extraction turns `observation.environment_state` into `observation.environment.state`, which is then never found. The policy's declared feature keys must be treated as authoritative rather than re-derived from the string.
 - **Source:** <https://github.com/huggingface/lerobot/issues/4451>
+
+### Fine-tuning runs to completion and the loss decreases normally, but success rate is at or near zero.
+
+`severity: high` · `frequency: common`
+
+**Cause 1 — The PEFT target-module list excludes the vision tower and language backbone, so almost nothing task-relevant is being trained.**
+
+- **Test:** Read `num_learnable_params` out of the training log rather than trusting the CLI flags you passed. In a controlled SmolVLA / SO-101 experiment using the default target list, only 742,656 parameters were trainable (0.16 %) and **every mid-training evaluation scored 0.0 %**, while full fine-tuning was already at 60 % on its first evaluation.
+- **Fix:** Expand the target list rather than abandoning LoRA. Adding three q/v families and fully training the five embodiment projection layers (rank 64, lr 3e-4) reached 94.0 / 84.0 / 98.0 % with 9,851,728 trainable parameters (2.1 %) — about 1/40 of full fine-tuning's parameters at matched task performance. Match the trainable *fraction*, not the rank: the same rank 64 is 2.1 % of SmolVLA but roughly 0.58 % of pi0, because the models have very different numbers of attention sites.
+- **Source:** <https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/12-VLA%E5%BE%AE%E8%B0%83%E5%AE%9E%E6%88%98.md> · <https://huggingface.co/docs/lerobot/en/smolvla>
+
+**Cause 2 — An adapter flag silently changed the meaning of the model path, so you trained an adapter on top of an adapter — or read a base model as one.**
+
+- **Test:** Check whether the loaded base model is the one you expect. In LeRobot, setting `--policy.use_peft=true` makes the framework interpret `--policy.path` as an already-trained adapter directory.
+- **Fix:** Use `--peft.method_type` / `--peft.r` to attach a new adapter to a clean base, and verify the base checkpoint that actually got loaded.
+- **Source:** <https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/12-VLA%E5%BE%AE%E8%B0%83%E5%AE%9E%E6%88%98.md>
+
+**Cause 3 — Config drift: several settings differ from the reference recipe at once, and the combination is not the one that was validated.**
+
+- **Test:** Diff your training config against the shipped reference config field by field, not by remembering which flags you passed.
+- **Fix:** Use the shipped config verbatim first and confirm it reproduces the published number, then change exactly one thing at a time. This is the documented resolution of a reported pi0.5-at-1%-on-LIBERO case, where the drift was LoRA plus `discrete_state_input=False` plus a non-standard horizon plus hand-computed statistics that differed from the checkpoint's, plus ad-hoc learning-rate changes.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/issues/711>
 
 
 ---

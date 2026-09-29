@@ -79,6 +79,24 @@ symptoms:
           Collect recovery and intermediate-start data: start the robot at the entrance state
           of every sub-task, including slightly off-expert states. This is the only thing that
           actually addresses compounding error.
+      - cause: "Quantile normalisation computed on a small dataset has shrunk the effective action range, so the policy both trains on and emits scaled-down motion."
+        rank: 6
+        test: >
+          Compare the q01/q99 spread of your actions against the range of motion your
+          demonstrations actually contain, and check how much of the training data falls in the
+          middle of the normalised range. Reported in openpi: pi0.5 fine-tuned with LoRA on the
+          same single-arm data as pi0 performed substantially worse, with quantile normalisation
+          on a small dataset named as a contributing cause.
+        fix: >
+          The reported fix was to disable quantile normalisation for small fine-tunes
+          (`use_quantile_norm=False`, which requires patching the config), align batch size and
+          learning rate with the shipped `pi05_libero` recipe rather than the pi0 defaults, and
+          consider full fine-tuning or expert-only training rather than LoRA on both backbones.
+          This cause is easy to miss because the loss looks healthy: the targets are scaled down
+          consistently, so the model fits them well while emitting motion too small to do the
+          task. It presents as hesitation or undershoot rather than as an obviously broken policy.
+        sources: ["https://github.com/Physical-Intelligence/openpi/issues/763",
+                  "https://github.com/Physical-Intelligence/openpi/issues/692"]
     sources:
       - "https://mlanthology.org/corl/2025/jain2025corl-enabling/"
       - "https://arxiv.org/abs/2509.07953"
@@ -315,3 +333,39 @@ symptoms:
       The general lesson: in this stack, a missing or mismatched statistic frequently produces a
       silent no-op rather than an exception. Assert the round trip `unnormalize(normalize(a)) == a`
       once per experiment and you will catch this entire class of bug in one line.
+  - id: fine-tune-zero-success
+    symptom: "Fine-tuning runs to completion and the loss decreases normally, but success rate is at or near zero."
+    severity: high
+    frequency: "common"
+    causes:
+      - cause: "The PEFT target-module list excludes the vision tower and language backbone, so almost nothing task-relevant is being trained."
+        rank: 1
+        test: >
+          Read `num_learnable_params` out of the training log rather than trusting the CLI flags
+          you passed. In a controlled SmolVLA / SO-101 experiment using the default target list,
+          only 742,656 parameters were trainable (0.16 %) and **every mid-training evaluation
+          scored 0.0 %**, while full fine-tuning was already at 60 % on its first evaluation.
+        fix: >
+          Expand the target list rather than abandoning LoRA. Adding three q/v families and fully
+          training the five embodiment projection layers (rank 64, lr 3e-4) reached 94.0 / 84.0 /
+          98.0 % with 9,851,728 trainable parameters (2.1 %) — about 1/40 of full fine-tuning's
+          parameters at matched task performance. Match the trainable *fraction*, not the rank:
+          the same rank 64 is 2.1 % of SmolVLA but roughly 0.58 % of pi0, because the models have
+          very different numbers of attention sites.
+        sources: ["https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/12-VLA%E5%BE%AE%E8%B0%83%E5%AE%9E%E6%88%98.md",
+                  "https://huggingface.co/docs/lerobot/en/smolvla"]
+      - cause: "An adapter flag silently changed the meaning of the model path, so you trained an adapter on top of an adapter — or read a base model as one."
+        rank: 2
+        test: "Check whether the loaded base model is the one you expect. In LeRobot, setting `--policy.use_peft=true` makes the framework interpret `--policy.path` as an already-trained adapter directory."
+        fix: "Use `--peft.method_type` / `--peft.r` to attach a new adapter to a clean base, and verify the base checkpoint that actually got loaded."
+        sources: ["https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/12-VLA%E5%BE%AE%E8%B0%83%E5%AE%9E%E6%88%98.md"]
+      - cause: "Config drift: several settings differ from the reference recipe at once, and the combination is not the one that was validated."
+        rank: 3
+        test: "Diff your training config against the shipped reference config field by field, not by remembering which flags you passed."
+        fix: >
+          Use the shipped config verbatim first and confirm it reproduces the published number,
+          then change exactly one thing at a time. This is the documented resolution of a
+          reported pi0.5-at-1%-on-LIBERO case, where the drift was LoRA plus
+          `discrete_state_input=False` plus a non-standard horizon plus hand-computed statistics
+          that differed from the checkpoint's, plus ad-hoc learning-rate changes.
+        sources: ["https://github.com/Physical-Intelligence/openpi/issues/711"]
