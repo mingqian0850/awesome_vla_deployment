@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-123 entries · 47 production · 64 research · 8 toy · 4 abandoned
+130 entries · 50 production · 68 research · 8 toy · 4 abandoned
 
 </div>
 
@@ -240,6 +240,27 @@ The paper-level curation of this area is already done well elsewhere — see AID
 - **[RaC: Robot Learning for Long-Horizon Tasks by Scaling Recovery and Correction](https://arxiv.org/abs/2509.07953)** — `paper` · `research` · verified 2026-09 · #long-horizon #recovery #paper
   - *What it is:* Scales up recovery and correction data to make long-horizon policies robust to their own errors.
   - *Why it matters here:* The clearest statement of the thing practitioners learn the hard way: long-horizon failures are usually covariate shift, and the fix is recovery data — not more demonstrations of the happy path.
+- **[Action-Only Scorers Fail on the Structural Defects That Degrade Imitation Policies](https://arxiv.org/abs/2606.05588)** — `paper` · `research` · verified 2026-09 · #data-quality #curation #metrics #structural-defects #negative-result
+  - *What it is:* An empirical audit of demonstration-curation metrics, showing that scoring approaches based on the actions alone miss the structural defects that actually degrade imitation — non-Markovian structure, idleness, and spurious correlations.
+  - *Why it matters here:* The academic confirmation of the argument this repo makes about dataset balance: **do not curate or reweight by action value.** If your quality signal is computed from the action distribution, it is provably blind to the defects that matter. Pair an action-based scorer with a structural one, or you will filter out good episodes and keep bad ones — and the metrics will look like they are working the whole time.
+- **[Towards Balanced Behavior Cloning from Imbalanced Datasets](https://arxiv.org/abs/2508.06319)** — `paper` · `research` · verified 2026-09 · #balance #imbalance #behaviour-cloning #mixture #sub-task
+  - *What it is:* Studies behaviour cloning on demonstration datasets with unequal numbers of demonstrations across behaviours and skills, and what rebalancing does to the learned policy.
+  - *Why it matters here:* The right level at which to think about balance. Imbalance matters at the behaviour/skill/sub-task level, not the action-value level, and this quantifies how much an over-represented behaviour distorts the policy. Read it before deciding your dataset is imbalanced and reaching for resampling.
+- **[OpenVLA's data balancing and mixture recipe over Open X-Embodiment](https://arxiv.org/abs/2406.09246)** — `paper` · `research` · verified 2026-09 · #mixture #balance #open-x-embodiment #recipe #openvla
+  - *What it is:* Documents an explicit mixture recipe over Open X-Embodiment: reweighting to balance robot platform, task and scene distributions, removing dominant single-dataset biases, and stating exclusion criteria for unusable datasets.
+  - *Why it matters here:* The most concrete published account of how to build a VLA training mixture. Note what it balances — platform, task, scene — and what it does not: the marginal action histogram. That is the answer to "how do I make my data distribution even", from the people who trained one of the most widely used open VLAs.
+- **[AgiBot World — the 3-phase collection pipeline, and how the idle-frame defect was found](https://arxiv.org/abs/2503.06669)** — `paper` · `production` · verified 2026-09 · #pipeline #idle-frames #deployment-flywheel #annotation #industrial
+  - *What it is:* 1M+ trajectories across 217 tasks with a standardised collection pipeline: pilot collection to validate feasibility and fix collection standards; skilled teleoperators collecting with local validity verification before upload; then cloud post-processing where annotators verify each episode against the phase-1 standards and add language annotation. A human-in-the-loop cycle then collects a small set, trains a policy, deploys it, and uses policy failures to find data defects.
+  - *Why it matters here:* Two findings worth more than the dataset. First, **the excessive-idle-time defect was discovered by deploying a trained policy, not by inspecting the data** — industrial-scale confirmation that idle frames are a real failure cause and that auditing a dataset without a policy in the loop does not reliably find them. Second, it is a worked example of the deploy-find-defect-fix-collect flywheel, which is the operational shape every serious data effort eventually takes.
+- **[Cutting dead frames from DROID — 500 hours of robot data in 32 seconds](https://www.eventual.ai/blog/cutting-dead-frames-from-droid)** — `blog` · `production` · verified 2026-09 · #idle-frames #trimming #scale #engineering
+  - *What it is:* Engineering write-up on detecting and trimming idle frames across the whole DROID corpus at speed.
+  - *Why it matters here:* A concrete, reproducible idleness pass at real scale. Useful as a design reference when your dataset is too large to inspect episode by episode, which is the situation where nobody bothers to trim at all.
+- **[Daft — motion trimming for physical AI](https://docs.getdaft.io/en/stable/examples/motion-trimming-physical-ai/)** — `tool` · `production` · verified 2026-09 · #idle-frames #trimming #tool #recipe
+  - *What it is:* A runnable example notebook for motion trimming of robot video data.
+  - *Why it matters here:* Copy-paste starting point for building your own dead-frame trimming pass rather than writing the plumbing from scratch.
+- **[lerobot-doctor — dataset quality diagnostics](https://github.com/jashshah999/lerobot-doctor)** — `tool` · `research` · verified 2026-09 · #tool #diagnostics #quality #lerobot #overlap
+  - *What it is:* Community diagnostics tool for LeRobot datasets: idle time, anomalies, per-episode outliers.
+  - *Why it matters here:* Overlaps deliberately with our own `scripts/diag_dataset.py` — and you should know that, because choosing between them is better than running neither. This one is a packaged quality report; ours adds the phase-aliasing test, the chunk-target validity check and the action-convention probe, which are the diagnostics specific to the chained-task failure this repo is organised around. Use both if you like; they answer different questions.
 
 
 ## Training — frameworks, recipes, action representations
@@ -588,8 +609,8 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 **Cause 4 — Idle frames at the head of every episode taught the policy to do nothing at the reset state.**
 
 - **Test:** Compare the fraction of near-zero-action frames in the first ~10 frames of each episode against the rest of the episode.
-- **Fix:** Drop or down-weight those frames and retrain. This is the cheapest fix in the whole document and it is frequently the answer — if the operator starts recording before touching the controller, every episode contributes a large, perfectly consistent 'at this state, do not move' sample. This is not a heuristic: the openpi training recipe ships an idle filter as a default, filtering "any time steps for which the next chunk of actions would be largely idle".
-- **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md>
+- **Fix:** Drop or down-weight those frames and retrain. This is the cheapest fix in the whole document and it is frequently the answer — if the operator starts recording before touching the controller, every episode contributes a large, perfectly consistent 'at this state, do not move' sample. This is not a heuristic: the openpi training recipe ships an idle filter as a default, filtering "any time steps for which the next chunk of actions would be largely idle". There is also industrial-scale evidence for the failure mode itself: the AgiBot World pipeline discovered excessive idle time and inconsistent transitions **only after deploying a trained policy**, not by auditing the data, and had to add a post-processing step to remove idle frames. If a 1M-trajectory industrial pipeline found this by deploying rather than by inspecting, inspecting your dataset by eye will not find it either.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md> · <https://arxiv.org/abs/2503.06669>
 
 **Cause 5 — Episode-head frames dominate and the policy never sees the later phases from its own state distribution (covariate shift).**
 

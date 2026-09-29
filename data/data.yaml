@@ -152,3 +152,106 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [long-horizon, recovery, paper]
+  - id: action-only-scorers-fail
+    name: "Action-Only Scorers Fail on the Structural Defects That Degrade Imitation Policies"
+    url: "https://arxiv.org/abs/2606.05588"
+    type: paper
+    what: >
+      An empirical audit of demonstration-curation metrics, showing that scoring approaches
+      based on the actions alone miss the structural defects that actually degrade imitation —
+      non-Markovian structure, idleness, and spurious correlations.
+    why: >
+      The academic confirmation of the argument this repo makes about dataset balance: **do not
+      curate or reweight by action value.** If your quality signal is computed from the action
+      distribution, it is provably blind to the defects that matter. Pair an action-based scorer
+      with a structural one, or you will filter out good episodes and keep bad ones — and the
+      metrics will look like they are working the whole time.
+    maturity: research
+    verified: 2026-09
+    tags: [data-quality, curation, metrics, structural-defects, negative-result]
+  - id: balanced-bc-imbalanced
+    name: "Towards Balanced Behavior Cloning from Imbalanced Datasets"
+    url: "https://arxiv.org/abs/2508.06319"
+    type: paper
+    what: "Studies behaviour cloning on demonstration datasets with unequal numbers of demonstrations across behaviours and skills, and what rebalancing does to the learned policy."
+    why: >
+      The right level at which to think about balance. Imbalance matters at the
+      behaviour/skill/sub-task level, not the action-value level, and this quantifies how much
+      an over-represented behaviour distorts the policy. Read it before deciding your dataset
+      is imbalanced and reaching for resampling.
+    maturity: research
+    verified: 2026-09
+    tags: [balance, imbalance, behaviour-cloning, mixture, sub-task]
+  - id: openvla-mixture-recipe
+    name: "OpenVLA's data balancing and mixture recipe over Open X-Embodiment"
+    url: "https://arxiv.org/abs/2406.09246"
+    type: paper
+    what: >
+      Documents an explicit mixture recipe over Open X-Embodiment: reweighting to balance robot
+      platform, task and scene distributions, removing dominant single-dataset biases, and
+      stating exclusion criteria for unusable datasets.
+    why: >
+      The most concrete published account of how to build a VLA training mixture. Note what it
+      balances — platform, task, scene — and what it does not: the marginal action histogram.
+      That is the answer to "how do I make my data distribution even", from the people who
+      trained one of the most widely used open VLAs.
+    maturity: research
+    verified: 2026-09
+    tags: [mixture, balance, open-x-embodiment, recipe, openvla]
+  - id: agibot-world-pipeline
+    name: "AgiBot World — the 3-phase collection pipeline, and how the idle-frame defect was found"
+    url: "https://arxiv.org/abs/2503.06669"
+    type: paper
+    what: >
+      1M+ trajectories across 217 tasks with a standardised collection pipeline: pilot collection
+      to validate feasibility and fix collection standards; skilled teleoperators collecting with
+      local validity verification before upload; then cloud post-processing where annotators
+      verify each episode against the phase-1 standards and add language annotation. A
+      human-in-the-loop cycle then collects a small set, trains a policy, deploys it, and uses
+      policy failures to find data defects.
+    why: >
+      Two findings worth more than the dataset. First, **the excessive-idle-time defect was
+      discovered by deploying a trained policy, not by inspecting the data** — industrial-scale
+      confirmation that idle frames are a real failure cause and that auditing a dataset
+      without a policy in the loop does not reliably find them. Second, it is a worked example
+      of the deploy-find-defect-fix-collect flywheel, which is the operational shape every
+      serious data effort eventually takes.
+    maturity: production
+    verified: 2026-09
+    tags: [pipeline, idle-frames, deployment-flywheel, annotation, industrial]
+  - id: eventual-dead-frames
+    name: "Cutting dead frames from DROID — 500 hours of robot data in 32 seconds"
+    url: "https://www.eventual.ai/blog/cutting-dead-frames-from-droid"
+    type: blog
+    what: "Engineering write-up on detecting and trimming idle frames across the whole DROID corpus at speed."
+    why: >
+      A concrete, reproducible idleness pass at real scale. Useful as a design reference when
+      your dataset is too large to inspect episode by episode, which is the situation where
+      nobody bothers to trim at all.
+    maturity: production
+    verified: 2026-09
+    tags: [idle-frames, trimming, scale, engineering]
+  - id: daft-motion-trimming
+    name: "Daft — motion trimming for physical AI"
+    url: "https://docs.getdaft.io/en/stable/examples/motion-trimming-physical-ai/"
+    type: tool
+    what: "A runnable example notebook for motion trimming of robot video data."
+    why: "Copy-paste starting point for building your own dead-frame trimming pass rather than writing the plumbing from scratch."
+    maturity: production
+    verified: 2026-09
+    tags: [idle-frames, trimming, tool, recipe]
+  - id: lerobot-doctor
+    name: "lerobot-doctor — dataset quality diagnostics"
+    url: "https://github.com/jashshah999/lerobot-doctor"
+    type: tool
+    what: "Community diagnostics tool for LeRobot datasets: idle time, anomalies, per-episode outliers."
+    why: >
+      Overlaps deliberately with our own `scripts/diag_dataset.py` — and you should know that,
+      because choosing between them is better than running neither. This one is a packaged
+      quality report; ours adds the phase-aliasing test, the chunk-target validity check and
+      the action-convention probe, which are the diagnostics specific to the chained-task
+      failure this repo is organised around. Use both if you like; they answer different
+      questions.
+    maturity: research
+    verified: 2026-09
+    tags: [tool, diagnostics, quality, lerobot, overlap]
