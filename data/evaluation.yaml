@@ -60,15 +60,25 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [evaluation, statistics, confidence, trials]
-  - id: eval-stopping-rules
-    name: "Sequential / anytime-valid stopping rules for robot evaluation"
+  - id: phail-benchmark
+    name: "PhAIL: A Real-Robot VLA Benchmark and Distributional Methodology"
+    paper_title: "PhAIL: A Real-Robot VLA Benchmark and Distributional Methodology"
     url: "https://arxiv.org/abs/2605.29710"
     type: paper
-    what: "States outright that N <= 25 without confidence intervals cannot resolve close comparisons, and provides sequential testing so you can stop as soon as the answer is determined."
+    what: >
+      A real-robot VLA benchmark that also proposes a distributional evaluation methodology. It
+      states outright that N <= 25 trials without confidence intervals cannot resolve close
+      comparisons.
     why: >
       Answers the question every evaluation actually faces: when am I allowed to stop running
-      trials. Anytime-valid stopping means you do not have to pre-commit to a fixed trial count
-      and waste robot time when the difference is already unambiguous.
+      trials. Pair it with the sequential and anytime-valid stopping work, which lets you stop
+      as soon as the answer is determined instead of pre-committing to a fixed trial count and
+      burning robot time on a difference that is already unambiguous.
+    notes: >
+      Our entry name previously read "Sequential / anytime-valid stopping rules for robot
+      evaluation", which is a description of one contribution rather than the paper's identity.
+      Renamed after scripts/check_papers.py compared it against the arXiv record — a small
+      instance of exactly the mislabelling that script exists to catch.
     maturity: research
     verified: 2026-09
     tags: [evaluation, statistics, stopping, trials]

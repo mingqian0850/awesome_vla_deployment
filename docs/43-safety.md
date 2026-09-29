@@ -187,6 +187,26 @@ You cannot reliably detect OOD from the policy's own confidence, but you can det
 Treat these as a **degradation trigger**, not a stop: reduce speed, request help, or hand over
 to a scripted recovery. Stopping mid-task can itself be the unsafe outcome.
 
+**There is now a real research cluster here**, which was not true when this page was first
+written. Four papers, and they answer different questions:
+
+| Work | What it contributes |
+|---|---|
+| [Hide-and-Seek in Trajectories](https://arxiv.org/abs/2605.30834) | Mines failure signals from the policy's *own trajectories* rather than requiring labelled failures — relevant because you will never have a clean negative set |
+| [SAFECAST](https://arxiv.org/abs/2608.04246) | Failure detection under exactly the deployment shifts that break policies in the field: clutter, distractors, lighting, novel objects, reworded instructions |
+| [RAFAIL](https://arxiv.org/abs/2609.18324) | Relationship-aware detection that explicitly trades the latency of VLM-based semantic checking against fast OOD scorers |
+| [Rewind-IL](https://arxiv.org/abs/2604.16683) | Detection *plus* state respawning — the recovery half of graceful degradation, for long-horizon action-chunked failures |
+
+**RAFAIL is the one to read first for a real deployment**, because it is the only one that
+treats the monitor as a component with its own cost. A semantic check that needs a VLM forward
+pass competes with your policy for the same GPU, and on the latency arithmetic in
+[docs/41](41-real-time-inference.md) that competition is not free: you are either slowing the
+policy or delaying the monitor. Decide which, deliberately, rather than discovering it when
+the guard fires late.
+
+And note what these give you: **detection**. Recovery is Rewind-IL and Layer 5 below. A monitor
+with no bounded response is a logging system.
+
 ### Layer 5 — Recovery and human takeover
 
 - **Scripted recovery primitives** that are not learned: open the gripper, retreat along the
@@ -207,6 +227,7 @@ This is where [natnew/awesome-physical-ai] stops and this page continues.
 | **ISO 12100** | Risk assessment methodology | The document that justifies *your* limits and layers. Do this first; the rest is downstream |
 | **ISO 10218-1 / -2** | Industrial robot safety (robot / integration) | Layer 0 and the stopping-performance requirements. Defines the safety-rated stop categories your Layer 2 must implement |
 | **ISO/TS 15066** | Collaborative operation: power-and-force limiting, speed-and-separation monitoring | If a human shares the workspace: Layer 1 (force/velocity caps) plus a separation monitor. Your Layer 4 novelty signal is *not* a substitute for SSM |
+| **ISO 21448 (SOTIF)** | Safety of the intended functionality: the system worked as designed, but the design was inadequate | **The right lens for a learned policy, and the one most often missed.** See below |
 | **ISO 13849-1** | Performance Level of safety-related control systems | Applies to your limiter and stopping circuit — and to nothing that contains a neural network |
 | **IEC 61508 / IEC 62061** | Functional safety, SIL | Same boundary: the deterministic layers, not the policy |
 | **ISO 26262 / UL 4600** | Automotive / autonomous-product safety cases | Relevant if you are building a safety *case* rather than a cell; UL 4600's argument-based approach is a more realistic fit for learned components than a PL calculation |
@@ -214,6 +235,46 @@ This is where [natnew/awesome-physical-ai] stops and this page continues.
 The mapping is the point: **every standard lands on Layers 0–3 and none of them lands on the
 policy.** That is not a limitation of the standards; it is the correct reading of what a
 learned policy is.
+
+### Why SOTIF is the standard you are actually looking for
+
+Functional-safety standards assume the system does what it was specified to do and ask whether
+it is safe when it *malfunctions*. A learned policy does not malfunction. It does exactly what
+it was trained to do, competently, in a situation the training data did not cover — and that
+is where the harm comes from. "No fault occurred" and "someone was hurt" are compatible.
+
+ISO 21448 exists for precisely this shape of problem: unsafe behaviour arising from
+insufficient situational awareness or an inadequate specification, with no component failure
+to point at. For a VLA deployment the mapping is direct:
+
+- **Known unsafe scenarios** — failure modes you have already observed and can test for. These
+  are your troubleshooting entries, and they belong in a test suite.
+- **Unknown unsafe scenarios** — the policy will do something you did not anticipate, in a
+  situation you did not collect. This is the residual, and it is what Layer 4 monitoring and
+  Layer 5 recovery exist to bound. You will not eliminate it by collecting more data.
+- **The validation problem** — SOTIF forces you to argue coverage rather than assume it. For a
+  learned policy that argument is "here is the state distribution I demonstrated, and here is
+  where I have evidence the policy degrades". If you cannot state that boundary, you do not
+  have a safety case, you have a hope.
+
+Practical consequence: **track your policy's operational design domain explicitly** — the
+objects, poses, lighting, and clutter it was trained on — and treat departures from it as
+first-class events, not as noise. A CBF or a velocity limiter does not know the difference
+between "reaching for the cup" and "reaching for the operator's hand that looks a bit like a
+cup". Only your Layer 4 monitor, plus a bounded authority limit, can act on that.
+
+### Readable standards material
+
+Every standards link above resolves to a paywalled catalogue page, which is useless when you
+are trying to understand what the standard actually requires. Two free entry points:
+
+- **DGUV/IFA on collaborative robots** — [dguv.de/ifa](https://www.dguv.de/ifa/fachinfos/kollaborierende-roboter/index-2.jsp).
+  A readable interpretation of ISO/TS 15066 and ISO 10218 written by a body that assesses these
+  systems for a living, including concrete power-and-force limit tables. Start here before
+  buying the standards.
+- **[natnew/awesome-physical-ai](https://github.com/natnew/awesome-physical-ai)** maintains the
+  best index of the standards landscape itself (ISO 10218, ISO/TS 15066, ISO 26262, UL 4600, EU
+  AI Act). It stops at the index; this page is the part that connects them to a running loop.
 
 ## 4. Checklist before a policy drives anything
 

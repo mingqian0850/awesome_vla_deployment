@@ -1,0 +1,122 @@
+section: "Safety and runtime monitoring"
+order: 42
+description: >
+  The least-covered area in this field, and the reason docs/43-safety.md is written rather
+  than linked. Detection research now exists; the software you would actually run does not.
+  Where an entry here is a paper, treat it as the design reference for a component you still
+  have to build.
+entries:
+  - id: dguv-ifa-cobot
+    name: "DGUV/IFA — collaborative robot safety (readable interpretation)"
+    url: "https://www.dguv.de/ifa/fachinfos/kollaborierende-roboter/index-2.jsp"
+    type: standard
+    what: >
+      A free, readable interpretation of ISO/TS 15066 and ISO 10218 from the German social
+      accident insurance body's institute, which assesses these systems professionally.
+      Includes concrete power-and-force limit tables.
+    why: >
+      Every standards link in this space resolves to a paywalled catalogue page, which is
+      useless when you are trying to work out what the standard actually requires. This is the
+      readable entry point, and it is the right place to start before buying anything. If a
+      human shares your robot's workspace, the power-and-force tables here are the numbers you
+      need.
+    maturity: production
+    verified: 2026-09
+    tags: [standards, iso-ts-15066, iso-10218, cobot, readable]
+  - id: iso-21448-sotif
+    name: "ISO 21448 — Safety of the Intended Functionality (SOTIF)"
+    url: "https://www.bsigroup.com/en-GB/standards/iso-21448/"
+    type: standard
+    what: >
+      The framework for unsafe behaviour with no component failure: the system worked as
+      designed, but the design or its situational awareness was inadequate.
+    why: >
+      The right lens for a learned policy, and the one most often missing. Functional-safety
+      standards ask whether a system is safe when it *malfunctions*; a policy does not
+      malfunction, it competently does the wrong thing in a situation the training data did not
+      cover. "No fault occurred" and "someone was hurt" are compatible, and SOTIF is the
+      framework written for that shape of problem. In practice it forces you to state your
+      operational design domain and argue coverage, rather than assuming it.
+    maturity: production
+    verified: 2026-09
+    tags: [standards, sotif, odd, safety-case, learned-components]
+  - id: hide-and-seek-trajectories
+    name: "Hide-and-Seek in Trajectories: Discovering Failure Signals for VLA Runtime Monitoring"
+    url: "https://arxiv.org/abs/2605.30834"
+    type: paper
+    what: "Mines failure signals from the policy's own trajectories rather than requiring labelled failure data."
+    why: >
+      The practical problem with supervised failure detection is that you never have a clean set
+      of labelled failures — failures are rare, expensive, and labelled inconsistently. This
+      attacks that directly, which is what makes it usable in a real project.
+    maturity: research
+    verified: 2026-09
+    tags: [monitoring, failure-detection, runtime, trajectories]
+  - id: safecast
+    name: "SAFECAST: Robust Failure Detection for VLA Policies"
+    url: "https://arxiv.org/abs/2608.04246"
+    type: paper
+    what: "Failure detection with contrast-set training and calibration, targeting the shifts that break policies in the field: clutter, distractors, lighting changes, novel objects, reworded instructions."
+    why: >
+      The listed shifts are exactly the ones that separate a lab demo from a deployment, and
+      they are the ones an OOD monitor has to survive. Calibration matters here more than raw
+      accuracy: a detector that fires constantly gets disabled by its operators, and then you
+      have no monitor at all.
+    maturity: research
+    verified: 2026-09
+    tags: [monitoring, failure-detection, calibration, distribution-shift]
+  - id: rafail
+    name: "RAFAIL: Relationship-Aware Failure Detection for Robotic Manipulation"
+    url: "https://arxiv.org/abs/2609.18324"
+    type: paper
+    what: "Relationship-aware failure detection that trades VLM-based semantic checking against fast out-of-distribution scorers."
+    why: >
+      Read this one first for a real deployment, because it treats the monitor as a component
+      with its own cost. A semantic check requiring a VLM forward pass competes with your policy
+      for the same GPU, and on a tight control loop that competition is not free — you are
+      slowing the policy or delaying the monitor, and you should choose which deliberately. Most
+      monitoring work assumes the monitor is free.
+    maturity: research
+    verified: 2026-09
+    tags: [monitoring, failure-detection, latency, gpu-contention, semantic]
+  - id: rewind-il
+    name: "Rewind-IL: Online Failure Detection and State Respawning for Imitation Learning"
+    url: "https://arxiv.org/abs/2604.16683"
+    type: paper
+    what: "Online failure detection combined with state respawning, aimed at long-horizon action-chunked failures."
+    why: >
+      The recovery half of graceful degradation, and the half almost everyone skips. A monitor
+      with no bounded response is just a logging system; Rewind-IL pairs detection with a
+      concrete action, which is what Layer 5 of docs/43-safety.md describes as scripted
+      recovery primitives. Worth reading for the respawn semantics even if you implement the
+      detection differently.
+    maturity: research
+    verified: 2026-09
+    tags: [monitoring, recovery, respawning, long-horizon, chunking]
+  - id: nvidia-halos
+    name: "NVIDIA Halos for robotics"
+    url: "https://developer.nvidia.com/blog/inside-nvidia-halos-for-robotics-a-full-stack-functional-safety-system-for-physical-ai/"
+    type: docs
+    what: "Vendor architecture for a full-stack functional-safety system for physical AI."
+    why: >
+      The most complete published architecture in this space, and useful as a reference structure
+      even if you never adopt it. Note what it is: an architecture. There is still no reference
+      implementation of a watchdog and limiter wrapping a learned policy — that is the gap
+      docs/43-safety.md fills.
+    maturity: production
+    verified: 2026-09
+    tags: [safety, architecture, functional-safety, vendor]
+  - id: mender-ota
+    name: "Mender — open-source OTA updates with rollback"
+    url: "https://mender.io/"
+    type: tool
+    what: "Over-the-air update system with atomic rollback semantics."
+    why: >
+      Relevant to the failure mode nobody plans for: you push a model update to the fleet, it
+      regresses, and now you need to get back. Rollback semantics are the difference between a
+      bad afternoon and a dead robot. Note the interaction with the checkpoint-to-calibration
+      provenance gap — rolling back the model without rolling back the calibration is its own
+      bug class.
+    maturity: production
+    verified: 2026-09
+    tags: [ota, fleet, rollback, operations]

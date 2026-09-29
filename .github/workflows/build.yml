@@ -27,3 +27,9 @@ jobs:
       # found to contain fabricated arXiv IDs, so this is enforced rather than aspirational.
       - name: All links resolve
         run: python scripts/check_links.py
+
+      # Resolving is not the same as being the right paper. Search-result snippets can attach
+      # arbitrary text to an arXiv ID, and a checker that only confirms 200 would publish a
+      # mislabelled paper. This queries the arXiv API and compares titles.
+      - name: arXiv references are the papers we claim
+        run: python scripts/check_papers.py

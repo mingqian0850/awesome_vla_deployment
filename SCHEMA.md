@@ -15,6 +15,9 @@ files by `scripts/build_readme.py` — never edit the README by hand.
   license: Apache-2.0
   tags: [latency, chunking, async]
   notes: "Optional. Gotchas, measured numbers, or a reason to distrust it."
+  paper_title: "Optional. Exact published title. Declaring it enables a strict match"
+               # against the arXiv API in scripts/check_papers.py.
+  sources: ["Optional. Only if the entry summarises other work."]
 ```
 
 ## `type`
@@ -60,6 +63,12 @@ This field is the point of the whole repo. Most lists conflate "a paper exists" 
    page. Placeholder or unresolvable IDs are treated as a bug.
    (This is not hypothetical: a 433-star "deployment" list in this space contains 27
    fabricated arXiv IDs — see the warning in the README.)
+   **Verify paper identity against the arXiv API, never against a search-result snippet.** A
+   snippet can attach arbitrary text to an ID, and a checker that only confirms HTTP 200 will
+   cheerfully publish a mislabelled paper. `scripts/check_papers.py` enforces this: it resolves
+   every arXiv ID and compares the real title against the entry. Declare `paper_title` on an
+   entry to opt into a strict match; descriptive entry names are otherwise allowed and only
+   warned about.
 3. **Numbers are attributed.** Any latency / VRAM / success-rate figure must name the
    hardware and the model. "Faster" without a number is not accepted.
 4. **Negative results are wanted.** "We tried INT8 on model X and the policy broke" is more

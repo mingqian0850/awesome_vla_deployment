@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-130 entries · 50 production · 68 research · 8 toy · 4 abandoned
+138 entries · 54 production · 72 research · 8 toy · 4 abandoned
 
 </div>
 
@@ -108,6 +108,7 @@ The hand-written pages, where the parts that no link can give you live:
 - [Training — frameworks, recipes, action representations](#training--frameworks-recipes-action-representations)
 - [Training recipes — the numbers](#training-recipes--the-numbers)
 - [Deployment — inference timing, optimisation, edge, integration](#deployment--inference-timing-optimisation-edge-integration)
+- [Safety and runtime monitoring](#safety-and-runtime-monitoring)
 - [Deployment benchmarks — measured, not cited](#deployment-benchmarks--measured-not-cited)
 - [Evaluation](#evaluation)
 - [Counter-evidence — what did not work, and what stops working](#counter-evidence--what-did-not-work-and-what-stops-working)
@@ -465,6 +466,36 @@ The reason this repo exists. Across 36 curated lists in this space, `watchdog|e-
   - *Why it matters here:* The constraint reference to consult *before* promising an export path. Most failed VLA exports fail on a specific unsupported operator or a dynamic-shape construct, and this is where you find out whether yours is supported rather than discovering it after writing the export script.
 
 
+## Safety and runtime monitoring
+
+The least-covered area in this field, and the reason docs/43-safety.md is written rather than linked. Detection research now exists; the software you would actually run does not. Where an entry here is a paper, treat it as the design reference for a component you still have to build.
+
+- **[DGUV/IFA — collaborative robot safety (readable interpretation)](https://www.dguv.de/ifa/fachinfos/kollaborierende-roboter/index-2.jsp)** — `standard` · `production` · verified 2026-09 · #standards #iso-ts-15066 #iso-10218 #cobot #readable
+  - *What it is:* A free, readable interpretation of ISO/TS 15066 and ISO 10218 from the German social accident insurance body's institute, which assesses these systems professionally. Includes concrete power-and-force limit tables.
+  - *Why it matters here:* Every standards link in this space resolves to a paywalled catalogue page, which is useless when you are trying to work out what the standard actually requires. This is the readable entry point, and it is the right place to start before buying anything. If a human shares your robot's workspace, the power-and-force tables here are the numbers you need.
+- **[ISO 21448 — Safety of the Intended Functionality (SOTIF)](https://www.bsigroup.com/en-GB/standards/iso-21448/)** — `standard` · `production` · verified 2026-09 · #standards #sotif #odd #safety-case #learned-components
+  - *What it is:* The framework for unsafe behaviour with no component failure: the system worked as designed, but the design or its situational awareness was inadequate.
+  - *Why it matters here:* The right lens for a learned policy, and the one most often missing. Functional-safety standards ask whether a system is safe when it *malfunctions*; a policy does not malfunction, it competently does the wrong thing in a situation the training data did not cover. "No fault occurred" and "someone was hurt" are compatible, and SOTIF is the framework written for that shape of problem. In practice it forces you to state your operational design domain and argue coverage, rather than assuming it.
+- **[Hide-and-Seek in Trajectories: Discovering Failure Signals for VLA Runtime Monitoring](https://arxiv.org/abs/2605.30834)** — `paper` · `research` · verified 2026-09 · #monitoring #failure-detection #runtime #trajectories
+  - *What it is:* Mines failure signals from the policy's own trajectories rather than requiring labelled failure data.
+  - *Why it matters here:* The practical problem with supervised failure detection is that you never have a clean set of labelled failures — failures are rare, expensive, and labelled inconsistently. This attacks that directly, which is what makes it usable in a real project.
+- **[SAFECAST: Robust Failure Detection for VLA Policies](https://arxiv.org/abs/2608.04246)** — `paper` · `research` · verified 2026-09 · #monitoring #failure-detection #calibration #distribution-shift
+  - *What it is:* Failure detection with contrast-set training and calibration, targeting the shifts that break policies in the field: clutter, distractors, lighting changes, novel objects, reworded instructions.
+  - *Why it matters here:* The listed shifts are exactly the ones that separate a lab demo from a deployment, and they are the ones an OOD monitor has to survive. Calibration matters here more than raw accuracy: a detector that fires constantly gets disabled by its operators, and then you have no monitor at all.
+- **[RAFAIL: Relationship-Aware Failure Detection for Robotic Manipulation](https://arxiv.org/abs/2609.18324)** — `paper` · `research` · verified 2026-09 · #monitoring #failure-detection #latency #gpu-contention #semantic
+  - *What it is:* Relationship-aware failure detection that trades VLM-based semantic checking against fast out-of-distribution scorers.
+  - *Why it matters here:* Read this one first for a real deployment, because it treats the monitor as a component with its own cost. A semantic check requiring a VLM forward pass competes with your policy for the same GPU, and on a tight control loop that competition is not free — you are slowing the policy or delaying the monitor, and you should choose which deliberately. Most monitoring work assumes the monitor is free.
+- **[Rewind-IL: Online Failure Detection and State Respawning for Imitation Learning](https://arxiv.org/abs/2604.16683)** — `paper` · `research` · verified 2026-09 · #monitoring #recovery #respawning #long-horizon #chunking
+  - *What it is:* Online failure detection combined with state respawning, aimed at long-horizon action-chunked failures.
+  - *Why it matters here:* The recovery half of graceful degradation, and the half almost everyone skips. A monitor with no bounded response is just a logging system; Rewind-IL pairs detection with a concrete action, which is what Layer 5 of docs/43-safety.md describes as scripted recovery primitives. Worth reading for the respawn semantics even if you implement the detection differently.
+- **[NVIDIA Halos for robotics](https://developer.nvidia.com/blog/inside-nvidia-halos-for-robotics-a-full-stack-functional-safety-system-for-physical-ai/)** — `docs` · `production` · verified 2026-09 · #safety #architecture #functional-safety #vendor
+  - *What it is:* Vendor architecture for a full-stack functional-safety system for physical AI.
+  - *Why it matters here:* The most complete published architecture in this space, and useful as a reference structure even if you never adopt it. Note what it is: an architecture. There is still no reference implementation of a watchdog and limiter wrapping a learned policy — that is the gap docs/43-safety.md fills.
+- **[Mender — open-source OTA updates with rollback](https://mender.io/)** — `tool` · `production` · verified 2026-09 · #ota #fleet #rollback #operations
+  - *What it is:* Over-the-air update system with atomic rollback semantics.
+  - *Why it matters here:* Relevant to the failure mode nobody plans for: you push a model update to the fleet, it regresses, and now you need to get back. Rollback semantics are the difference between a bad afternoon and a dead robot. Note the interaction with the checkpoint-to-calibration provenance gap — rolling back the model without rolling back the calibration is its own bug class.
+
+
 ## Deployment benchmarks — measured, not cited
 
 Latency and quantisation numbers that named hardware actually produced. Every figure here was traced to a source that reports it, and every URL is machine-checked. **Read the comparability warning before using any row.** Different harnesses, camera counts, denoising step counts and warm-up paths make most cross-source VLA latency comparisons invalid. FlashRT's own benchmark table carries this warning explicitly, and it applies to NVIDIA's published numbers too. Entries with `type: gap` are measurements that still do not exist publicly. Writing that down is more useful than inventing a number.
@@ -536,9 +567,10 @@ Most labs evaluate ad hoc, then report point estimates from a handful of trials.
 - **[Statistical lower bounds on behavior-cloning success probability](https://arxiv.org/abs/2405.05439)** — `paper` · `research` · verified 2026-09 · #evaluation #statistics #confidence #trials
   - *What it is:* Derives statistically valid lower bounds on true success probability from a small number of trials (roughly 20-100).
   - *Why it matters here:* Turns "we got 7 out of 10" into a defensible statement. Most real-robot evaluations in this field report point estimates from trial counts that cannot support the comparisons being drawn, and this gives you the bound instead.
-- **[Sequential / anytime-valid stopping rules for robot evaluation](https://arxiv.org/abs/2605.29710)** — `paper` · `research` · verified 2026-09 · #evaluation #statistics #stopping #trials
-  - *What it is:* States outright that N <= 25 without confidence intervals cannot resolve close comparisons, and provides sequential testing so you can stop as soon as the answer is determined.
-  - *Why it matters here:* Answers the question every evaluation actually faces: when am I allowed to stop running trials. Anytime-valid stopping means you do not have to pre-commit to a fixed trial count and waste robot time when the difference is already unambiguous.
+- **[PhAIL: A Real-Robot VLA Benchmark and Distributional Methodology](https://arxiv.org/abs/2605.29710)** — `paper` · `research` · verified 2026-09 · #evaluation #statistics #stopping #trials
+  - *What it is:* A real-robot VLA benchmark that also proposes a distributional evaluation methodology. It states outright that N <= 25 trials without confidence intervals cannot resolve close comparisons.
+  - *Why it matters here:* Answers the question every evaluation actually faces: when am I allowed to stop running trials. Pair it with the sequential and anytime-valid stopping work, which lets you stop as soon as the answer is determined instead of pre-committing to a fixed trial count and burning robot time on a difference that is already unambiguous.
+  - *Note:* Our entry name previously read "Sequential / anytime-valid stopping rules for robot evaluation", which is a description of one contribution rather than the paper's identity. Renamed after scripts/check_papers.py compared it against the arXiv record — a small instance of exactly the mislabelling that script exists to catch.
 - **[Near-optimal stopping in the 10-50 trial regime](https://arxiv.org/abs/2503.10966)** — `paper` · `research` · verified 2026-09 · #evaluation #statistics #small-sample #trials
   - *What it is:* Studies evaluation stopping specifically in the trial-count regime that real-robot manipulation work actually operates in.
   - *Why it matters here:* The 10-50 trial regime is where almost all published robot evaluations live, and it is precisely where naive statistics break down. This is the closest thing to a protocol for the situation you are actually in.
