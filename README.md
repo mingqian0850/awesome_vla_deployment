@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-151 entries · 57 production · 81 research · 9 toy · 4 abandoned
+155 entries · 60 production · 82 research · 9 toy · 4 abandoned
 
 </div>
 
@@ -392,6 +392,16 @@ Every figure here is quoted from a primary source that was fetched and read, not
 - **[Run-to-run noise floors you should measure before comparing anything](https://github.com/NVIDIA/Isaac-GR00T)** — `discussion` · `research` · verified 2026-09 · #evaluation #noise #reproducibility #statistics
   - *What it is:* Reported noise levels: GR00T shows roughly 5-6% run-to-run variation, and about ±5% sampling noise at 100 episodes.
   - *Why it matters here:* A five-point noise floor means a five-point improvement is not a result. Measure your own floor by running the identical configuration twice before you compare two configurations — it is one of the cheapest experiments available and it prevents most of the false conclusions in this space.
+- **[Predict long, execute short — the two horizon ablations, and why they are different knobs](https://arxiv.org/abs/2506.01844)** — `benchmark` · `research` · verified 2026-09 · #horizon #chunking #execution-depth #ablation #benchmark #rtc
+  - *What it is:* SmolVLA is the only public ablation of **both** horizons on the same suite. Chunk size (prediction horizon), Table 12: 1 -> 50.0%, 10 -> 84.0%, 30 -> 78.5%, 50 -> 80.3%, 100 -> 74.5%. Execution depth (how many of the predicted steps you actually send), Table 13: 1 -> 80.3%, 10 -> 82.8%, 30 -> 70.8%, 50 -> 51.8%. Cross-policy convergence on the ratio: Diffusion Policy uses 16/8, RTC's real-world setting uses a prediction horizon of 50 with a minimum execution of 25, GR00T uses 40/16.
+  - *Why it matters here:* Two practice-changing readings, and they contradict the two reflexes people have. **The chunk-size curve is an inverted U with a wide flat top between 10 and 50** — there is no magic number, but 1 and 100 are both clearly worse, so "as long as possible" and "one step at a time" are both wrong. **The execution-horizon curve is steeper** (80.3, 82.8, 70.8, 51.8), and executing the whole predicted chunk is the worst setting tested. So the rule is **predict long, execute short**: the prediction horizon is a capacity knob and the execution horizon is a responsiveness knob, and they trade off in opposite directions. The cross-policy ratio gives you a defensible default: `H ~= 2 * s`. And a corollary that is easy to get backwards — **if you adopt RTC, you extend the prediction horizon, not the execution horizon**; RTC's guidance needs a long enough chunk to have something to reconcile against (roughly 32 or more), while the execution horizon is exactly what it is trying to keep short.
+  - *Note:* A caution about reading the paper past the tables: SmolVLA's own real-world setup executes the **full** chunk synchronously while its simulation evaluation re-observes every step. That is an internal inconsistency, not a recommendation — do not copy it.
+- **[Three normalisation regimes inside one model family](https://arxiv.org/abs/2506.01844)** — `docs` · `production` · verified 2026-09 · #normalization #mean-std #z-score #quantile #pi0 #pi05 #smolvla
+  - *What it is:* Within the pi/SmolVLA ecosystem: SmolVLA uses mean/std, pi0 uses z-score, and pi0.5 uses quantiles. Three different regimes, one family, and in practice one repository.
+  - *Why it matters here:* Sharpens the advice that you must match the mode to the checkpoint: this is not a one-off mismatch between two projects, it is three live cases inside a single lineage. Combined with the finding that quantile is only marginally better than mean/std once the action convention is correct, the practical rule is: read the mode off the checkpoint and do not have an opinion about which is better.
+- **[openpi's fsq_tokenizer.py is not the pi0 action tokenizer](https://github.com/Physical-Intelligence/openpi)** — `repo` · `production` · verified 2026-09 · #tokenizer #fast #fsq #vqbet #disambiguation #trap
+  - *What it is:* `fsq_tokenizer.py` exists in the openpi tree but its own header states it is for RoboArena baselines. It is **not** the pi0 action tokenizer, which is FAST (DCT plus BPE). The distinct action-VQ alternative in this space is VQ-BeT, which reports roughly 5x faster inference than Diffusion Policy and does not use action chunking.
+  - *Why it matters here:* A reader skimming the repository for "how does pi0 tokenise actions" will find this file and conclude the wrong thing. Recorded because it is cheap to state and expensive to discover — you would build a training pipeline around the wrong tokenizer before noticing.
 
 
 ## Deployment — inference timing, optimisation, edge, integration
@@ -650,6 +660,9 @@ A section no other list in this space has, and the one most likely to save you a
 - **[Pretraining is worth +26.6 points on the same task](https://arxiv.org/abs/2506.01844)** — `paper` · `research` · verified 2026-09 · #pretraining #smolvla #success-rate #benchmark
   - *What it is:* SmolVLA reports 51.7% success on SO100 without pretraining on community datasets, rising to 78.3% after pretraining on community-collected data — a +26.6 point absolute improvement. It was trained on fewer than 30k episodes drawn entirely from public datasets, roughly an order of magnitude less data than prior work, standardised at 30 FPS.
   - *Why it matters here:* Quantifies what you get from starting at a pretrained checkpoint rather than from scratch, which is the main argument for the fine-tuning approach this repo assumes. It also sets a realistic expectation for how far a small open model can go when the pretraining mixture matches your hardware.
+- **[Position control beat velocity control, against the trend](https://arxiv.org/abs/2303.04137)** — `paper` · `production` · verified 2026-09 · #action-space #position #velocity #latency #negative-result #counter-evidence
+  - *What it is:* The Diffusion Policy work reports that position control consistently outperformed velocity control "in contrast to the majority of recent behavior cloning work", and specifically that position control is **robust against latency** while velocity control is not.
+  - *Why it matters here:* Direct counter-evidence for anyone planning a velocity or torque action space, and it interacts with two other entries in this repo. DROID ships joint **velocity** actions at 15 Hz, so copying its convention is not automatically wrong — but this result says the choice has a latency cost, and latency is the thing [docs/41](41-real-time-inference.md) is about. A velocity action space makes your policy more sensitive to exactly the staleness that chunked inference already introduces. Useful as the counterweight when someone proposes velocity actions for smoothness: the evidence points the other way.
 
 
 ## Troubleshooting — symptom to root cause to fix

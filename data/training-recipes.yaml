@@ -68,6 +68,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [action-space, gripper, control-frequency, porting]
+
   - id: droid-action-space
     name: "DROID action space is joint VELOCITY, not position"
     url: "https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"
@@ -84,6 +85,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [action-space, velocity, droid, gotcha]
+
   - id: lerobot-pi05-recipe
     name: "LeRobot — pi0.5 fine-tuning recipe"
     url: "https://huggingface.co/docs/lerobot/en/pi05"
@@ -100,6 +102,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [recipe, pi05, hyperparameters, frozen-vlm]
+
   - id: lerobot-pi0-recipe
     name: "LeRobot — pi0 fine-tuning recipe"
     url: "https://huggingface.co/docs/lerobot/en/pi0"
@@ -113,6 +116,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [recipe, pi0, hyperparameters]
+
   - id: openpi-idle-filter
     name: "openpi — idle filter for DROID training"
     url: "https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md"
@@ -150,6 +154,7 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [rtc, async, training, latency]
+
   - id: openvla-ft-comparison
     name: "Full FT vs LoRA vs frozen vs last-layer, with numbers"
     url: "https://arxiv.org/abs/2406.09246"
@@ -232,6 +237,7 @@ entries:
     tags: [pi05, loRA, quantile, normalization, small-dataset, action-range]
     sources: ["https://github.com/Physical-Intelligence/openpi/issues/763",
               "https://github.com/Physical-Intelligence/openpi/issues/692"]
+
   - id: pi05-config-drift
     name: "pi0.5 at 1% on LIBERO: config drift, not the model"
     url: "https://github.com/Physical-Intelligence/openpi/issues/711"
@@ -249,6 +255,7 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [pi05, config-drift, libero, debugging]
+
   - id: checkpoint-selection
     name: "How people actually decide a fine-tune is done"
     url: "https://github.com/Physical-Intelligence/openpi"
@@ -269,6 +276,7 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [checkpoint, stopping-rule, training-length, protocol]
+
   - id: evaluation-noise-floor
     name: "Run-to-run noise floors you should measure before comparing anything"
     url: "https://github.com/NVIDIA/Isaac-GR00T"
@@ -284,3 +292,70 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [evaluation, noise, reproducibility, statistics]
+
+  - id: horizon-ablations
+    name: "Predict long, execute short — the two horizon ablations, and why they are different knobs"
+    url: "https://arxiv.org/abs/2506.01844"
+    type: benchmark
+    what: >
+      SmolVLA is the only public ablation of **both** horizons on the same suite.
+      Chunk size (prediction horizon), Table 12: 1 -> 50.0%, 10 -> 84.0%, 30 -> 78.5%,
+      50 -> 80.3%, 100 -> 74.5%.
+      Execution depth (how many of the predicted steps you actually send), Table 13:
+      1 -> 80.3%, 10 -> 82.8%, 30 -> 70.8%, 50 -> 51.8%.
+      Cross-policy convergence on the ratio: Diffusion Policy uses 16/8, RTC's real-world
+      setting uses a prediction horizon of 50 with a minimum execution of 25, GR00T uses 40/16.
+    why: >
+      Two practice-changing readings, and they contradict the two reflexes people have.
+      **The chunk-size curve is an inverted U with a wide flat top between 10 and 50** — there
+      is no magic number, but 1 and 100 are both clearly worse, so "as long as possible" and
+      "one step at a time" are both wrong.
+      **The execution-horizon curve is steeper** (80.3, 82.8, 70.8, 51.8), and executing the
+      whole predicted chunk is the worst setting tested. So the rule is **predict long, execute
+      short**: the prediction horizon is a capacity knob and the execution horizon is a
+      responsiveness knob, and they trade off in opposite directions.
+      The cross-policy ratio gives you a defensible default: `H ~= 2 * s`. And a corollary that
+      is easy to get backwards — **if you adopt RTC, you extend the prediction horizon, not the
+      execution horizon**; RTC's guidance needs a long enough chunk to have something to
+      reconcile against (roughly 32 or more), while the execution horizon is exactly what it is
+      trying to keep short.
+    maturity: research
+    verified: 2026-09
+    tags: [horizon, chunking, execution-depth, ablation, benchmark, rtc]
+    notes: >
+      A caution about reading the paper past the tables: SmolVLA's own real-world setup executes
+      the **full** chunk synchronously while its simulation evaluation re-observes every step.
+      That is an internal inconsistency, not a recommendation — do not copy it.
+  - id: normalization-three-regimes
+    name: "Three normalisation regimes inside one model family"
+    url: "https://arxiv.org/abs/2506.01844"
+    type: docs
+    what: >
+      Within the pi/SmolVLA ecosystem: SmolVLA uses mean/std, pi0 uses z-score, and pi0.5 uses
+      quantiles. Three different regimes, one family, and in practice one repository.
+    why: >
+      Sharpens the advice that you must match the mode to the checkpoint: this is not a
+      one-off mismatch between two projects, it is three live cases inside a single lineage.
+      Combined with the finding that quantile is only marginally better than mean/std once the
+      action convention is correct, the practical rule is: read the mode off the checkpoint and
+      do not have an opinion about which is better.
+    maturity: production
+    verified: 2026-09
+    tags: [normalization, mean-std, z-score, quantile, pi0, pi05, smolvla]
+
+  - id: fsq-tokenizer-trap
+    name: "openpi's fsq_tokenizer.py is not the pi0 action tokenizer"
+    url: "https://github.com/Physical-Intelligence/openpi"
+    type: repo
+    what: >
+      `fsq_tokenizer.py` exists in the openpi tree but its own header states it is for RoboArena
+      baselines. It is **not** the pi0 action tokenizer, which is FAST (DCT plus BPE). The
+      distinct action-VQ alternative in this space is VQ-BeT, which reports roughly 5x faster
+      inference than Diffusion Policy and does not use action chunking.
+    why: >
+      A reader skimming the repository for "how does pi0 tokenise actions" will find this file
+      and conclude the wrong thing. Recorded because it is cheap to state and expensive to
+      discover — you would build a training pipeline around the wrong tokenizer before noticing.
+    maturity: production
+    verified: 2026-09
+    tags: [tokenizer, fast, fsq, vqbet, disambiguation, trap]

@@ -33,6 +33,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [drift, calibration, non-reproducibility, camera-pose, wear]
+
   - id: picknik-loss-curve
     name: "A good loss curve is not a working policy"
     url: "https://docs.picknik.ai/how_to/vla/train_a_vla_policy/"
@@ -50,6 +51,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [loss, evaluation, overfitting, validation, pitfall]
+
   - id: oft-more-data-did-not-fix-it
     name: "Quadrupling the dataset did not fix a language-grounding failure"
     url: "https://openvla-oft.github.io/"
@@ -68,6 +70,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [negative-result, language-grounding, data-scaling, film]
+
   - id: lerobot-25-episodes-failed
     name: "25 episodes explicitly was not enough"
     url: "https://github.com/huggingface/lerobot/blob/main/docs/source/smolvla.mdx"
@@ -84,6 +87,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [episode-count, data-size, negative-result, smolvla]
+
   - id: lerobot-50-is-a-floor
     name: "50 episodes is a floor, not a target"
     url: "https://github.com/huggingface/lerobot/issues/2378"
@@ -100,6 +104,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [episode-count, data-size, planning, pi05]
+
   - id: pi0-authors-hedge
     name: "The pi0 authors say it may not work for you"
     url: "https://github.com/Physical-Intelligence/openpi"
@@ -115,6 +120,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [non-transfer, expectations, pi0]
+
   - id: oft-copies-bad-demos
     name: "The policy reproduces the flaws in your demonstrations"
     url: "https://openvla-oft.github.io/"
@@ -131,6 +137,7 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [negative-result, data-quality, imitation, demonstrations]
+
   - id: sim-benchmarks-hid-the-problem
     name: "Sim benchmarks obscured the real deployment problems"
     url: "https://openaccess.thecvf.com/content/CVPR2026W/MEIS/html/Liu_Bridging_the_Pretrain-to-Real_Gap_Alignment_Challenges_in_Deploying_Generalist_VLA_CVPRW_2026_paper.html"
@@ -148,6 +155,7 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [sim-to-real, benchmark-critique, openvla, franka]
+
   - id: openvla-100-demos
     name: "~100 demonstrations, and a concrete training target"
     url: "https://github.com/openvla/openvla/issues/12"
@@ -164,6 +172,7 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [episode-count, action-token-accuracy, openvla, metrics]
+
   - id: smolvla-pretraining-payoff
     name: "Pretraining is worth +26.6 points on the same task"
     url: "https://arxiv.org/abs/2506.01844"
@@ -181,3 +190,24 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [pretraining, smolvla, success-rate, benchmark]
+
+  - id: position-beats-velocity
+    name: "Position control beat velocity control, against the trend"
+    url: "https://arxiv.org/abs/2303.04137"
+    type: paper
+    what: >
+      The Diffusion Policy work reports that position control consistently outperformed velocity
+      control "in contrast to the majority of recent behavior cloning work", and specifically
+      that position control is **robust against latency** while velocity control is not.
+    why: >
+      Direct counter-evidence for anyone planning a velocity or torque action space, and it
+      interacts with two other entries in this repo. DROID ships joint **velocity** actions at
+      15 Hz, so copying its convention is not automatically wrong — but this result says the
+      choice has a latency cost, and latency is the thing
+      [docs/41](41-real-time-inference.md) is about. A velocity action space makes your policy
+      more sensitive to exactly the staleness that chunked inference already introduces.
+      Useful as the counterweight when someone proposes velocity actions for smoothness: the
+      evidence points the other way.
+    maturity: production
+    verified: 2026-09
+    tags: [action-space, position, velocity, latency, negative-result, counter-evidence]
