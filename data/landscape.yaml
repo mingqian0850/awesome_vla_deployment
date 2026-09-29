@@ -247,3 +247,29 @@ entries:
       JavaScript-rendered and its calculator endpoint returns 404, and Vast.ai serves a loading
       page to scripts while its API returns 403. Neither can be verified automatically, so we
       quote neither.
+  - id: pricing-provenance
+    name: "Pricing pages disagree with their own machine-readable catalogues"
+    url: "https://huggingface.co/docs/hub/en/jobs-pricing"
+    type: docs
+    what: >
+      Provider pricing appears in at least two places that can contradict each other: a rendered
+      documentation or marketing page, and a machine-readable catalogue. Verified here: the
+      Hugging Face Jobs hardware API reports `a100-large` at $0.041667 per minute, which is
+      $2.50 per hour. Documents that quote a different figure for the same SKU are quoting a
+      stale or approximate rendering.
+    why: >
+      The general rule, and the reason this entry exists rather than a rate table: **when a
+      number comes from a catalogue, cite the catalogue, not a page that paraphrases it.** The
+      machine-readable endpoint is also the artifact that does not silently change under you,
+      and it is the one a script can re-verify — which is why the only price-related figures in
+      this repo are ones we could check mechanically.
+      This is the same discipline as the two other provenance entries here: the fabricated
+      arXiv IDs, and the SEO-contaminated cost and accuracy claims. In each case the failure is
+      a secondary source drifting from a primary one, and in each case the fix is to go one
+      level closer to whatever measured the number.
+    maturity: production
+    verified: 2026-09
+    tags: [provenance, cost, pricing, api, verification]
+    notes: >
+      We do not publish a provider rate table at all. Rates change faster than anything else
+      this repo tracks, and a stale rate is worse than no rate because it looks authoritative.
