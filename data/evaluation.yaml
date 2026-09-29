@@ -156,3 +156,39 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [benchmark, simulation, bimanual, domain-randomisation, robustness]
+  - id: evaluation-resolution
+    name: "Same checkpoint, 10 trials said 90% and 50 trials said 76%"
+    url: "https://github.com/Physical-Intelligence/openpi"
+    type: discussion
+    what: >
+      A direct measurement of how much of a success rate is sample size. Evaluating the same
+      checkpoint with 10 episodes read 90%; a 50-episode check gave 76.0%. Set against the
+      measured noise floors elsewhere in this section (5-6% run-to-run, about 5% sampling noise
+      at 100 episodes), that gives a usable rule: **report N, and do not believe any difference
+      under about 10 points when N is below roughly 20-50.**
+    why: >
+      This is the most useful single number for reading robot-learning results, including your
+      own. Fourteen points of apparent improvement, from nothing but which checkpoint snapshot
+      you looked at and how many trials you ran. It is the concrete version of the statistical
+      papers in this section: they tell you the bounds, this tells you the size of the effect in
+      the regime everyone actually operates in.
+      Practical version: write down the trial count and the initial-state list before you start,
+      and when a colleague reports a five-point win, ask for N first.
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, sample-size, statistics, resolution, success-rate]
+  - id: libero-three-numbers
+    name: "Three different 'official' LIBERO evaluation protocols"
+    url: "https://arxiv.org/abs/2506.01844"
+    type: paper
+    what: >
+      The same benchmark, three conventions: papers reporting LIBERO results commonly run 500
+      trials per suite across 3 seeds; LIBERO's own default configuration ships `n_eval: 20`;
+      and the repository's initial-state set contains 50 states.
+    why: >
+      Before concluding that your reproduction failed, check which of the three you are using.
+      A 25x difference in evidence between two people who both say "we evaluated on LIBERO" is
+      the clearest possible argument for reporting the protocol rather than naming the benchmark.
+    maturity: research
+    verified: 2026-09
+    tags: [libero, evaluation, protocol, reproduction, trials]

@@ -220,3 +220,30 @@ entries:
     maturity: toy
     verified: 2026-09
     tags: [errata, non-existent, do-not-cite, trap]
+  - id: seo-contamination
+    name: "This topic is SEO-contaminated — cite the paper, the repo, or the issue"
+    url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
+    type: gap
+    what: >
+      Two concrete cases. A high-ranking page states that pretraining cost "$35k" from "15 days
+      and 23,000 A100-hours"; the paper itself says 14 days and 21,500 A100-hours. And the widely
+      repeated claim that a policy reached roughly 100% action-token accuracy while still failing
+      the task **could not be traced to any paper, documentation page, or issue thread**.
+    why: >
+      VLA training is now a popular enough topic that content farms outrank primary sources, and
+      the numbers they repeat drift. The rule this repo enforces: **cite the paper, the repo, or
+      the issue — never a page that merely cites one.** If a figure matters to a decision, follow
+      it back to the artifact that measured it, and if it does not trace, treat it as unverified
+      rather than as approximately right.
+      This is the same failure mode as the fabricated arXiv IDs in the warning at the top of the
+      README, and the same reason `scripts/check_papers.py` compares titles against the arXiv API
+      rather than trusting a search snippet. Secondary summaries are useful for finding things;
+      they are not evidence.
+    maturity: toy
+    verified: 2026-09
+    tags: [provenance, seo, unverified, do-not-cite, errata]
+    notes: >
+      Also recorded so nobody re-derives them as failures: Google Cloud GPU pricing is
+      JavaScript-rendered and its calculator endpoint returns 404, and Vast.ai serves a loading
+      page to scripts while its API returns 403. Neither can be verified automatically, so we
+      quote neither.

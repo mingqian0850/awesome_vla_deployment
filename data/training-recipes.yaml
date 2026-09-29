@@ -375,3 +375,57 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [versioning, relative-actions, flag, gotcha]
+  - id: vram-boundary-counterevidence
+    name: "The 22.5 GB LoRA boundary, and what actually happens at 24 GB"
+    url: "https://github.com/Physical-Intelligence/openpi/issues/379"
+    type: discussion
+    what: >
+      openpi's requirements table gives fine-tuning with LoRA as "> 22.5 GB". The field reports
+      are messier: a user on a 24 GB RTX 4090 OOMs on the **first step** of a pi0-FAST LoRA
+      configuration, and a practitioner summarises the practical floor as "8 GB inference,
+      24 GB to fine-tune". Separately, an OpenVLA-OFT user measured about 6 s per step on both
+      1 and 4 A100s — distributed data parallel produced no speedup at all.
+    why: >
+      Two things worth planning around. The published VRAM number is a boundary rather than a
+      comfortable figure: ">22.5 GB" and "24 GB" are close enough that whether you fit depends on
+      the batch size, sequence length and which variant you picked, so treat 24 GB as a
+      try-it-and-see rather than a yes. And the DDP result is a reminder that multi-GPU does not
+      automatically mean faster — it replicates the model, so it reduces wall-clock only when the
+      per-step work is genuinely parallelisable and the bottleneck is not elsewhere.
+    maturity: research
+    verified: 2026-09
+    tags: [vram, hardware, lora, oom, ddp, multi-gpu]
+  - id: fine-tune-cost-anchor
+    name: "What a fine-tune actually costs — one worked example"
+    url: "https://docs.picknik.ai/how_to/vla/train_a_vla_policy/"
+    type: blog
+    what: >
+      A published pi0.5 LoRA run at 50k steps cost approximately $6.56 on an L40S and $9.88 on
+      an A100 80 GB at 2026-09 provider rates. For scale, OpenVLA pretraining used 21,500
+      A100-hours — three to four orders of magnitude more.
+    why: >
+      Fine-tuning is cheap enough that the dominant cost of a project is not compute, it is the
+      days you spend collecting data and debugging. That reframes decisions: an extra ablation
+      run costs single-digit dollars, so run it rather than arguing about it, and spend the
+      saved time on the data pipeline.
+    maturity: production
+    verified: 2026-09
+    tags: [cost, budget, lora, planning]
+    notes: >
+      Prices move and providers disagree with their own pages, so treat this as an
+      order-of-magnitude anchor for a dated snapshot rather than a quote. We deliberately do not
+      publish a provider rate table: it would rot faster than anything else in this repo.
+  - id: multi-gpu-not-auto-scaled
+    name: "Multi-GPU does not rescale your learning rate or step count"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/multi_gpu_training.mdx"
+    type: docs
+    what: "LeRobot's multi-GPU training documentation, which notes that learning rate and step count are not automatically adjusted for the number of devices."
+    why: >
+      Moving from one GPU to eight changes your effective batch size, and therefore the training
+      dynamics, without changing the numbers you passed. If you scale hardware between runs and
+      compare the results, you have changed two things at once. Keep the effective batch size
+      fixed when you add devices, or treat the change as a hyperparameter search rather than a
+      speedup.
+    maturity: production
+    verified: 2026-09
+    tags: [multi-gpu, learning-rate, batch-size, reproducibility]
