@@ -29,11 +29,24 @@ system can have zero chunk-boundary stall and still be too slow to react — see
 |---|---|---|
 | `f_c` | control frequency | 50 Hz |
 | `T_c = 1/f_c` | control period | 20 ms |
-| `H` | prediction horizon: action chunk length, in steps | 50 |
+| `H` | prediction horizon: action chunk length, in steps | **10**, not 50 — see below |
 | `s` | execution horizon: steps actually executed per inference | ~H/2 |
 | `L` | inference latency, observation captured → chunk returned | 76 ms |
 | `d` | inference latency expressed in control steps, `L / T_c` | ~4 |
-| `D_c = H / f_c` | wall-clock duration of one chunk | 1.0 s |
+| `D_c = H / f_c` | wall-clock duration of one chunk | 0.20 s at H=10, 50 Hz |
+
+> **Do not plan around `H = 50`.** It is the class default in openpi's `Pi0Config`, so it
+> appears in every tutorial and in the pi0 paper, but **every shipped configuration overrides
+> it**: `pi0_droid` 10, `pi0_fast_droid` 10, `pi05_libero` 10, `pi05_droid` 15, and the
+> full-DROID fine-tunes 16. GR00T N1.7 uses 40 and RDT-1B uses 64, so the horizon is a
+> per-model decision rather than a constant.
+>
+> This matters more than it looks, because `D_c` scales linearly with `H` while `L` does not.
+> At `H = 50` you get `D_c = 1.0 s` against `L = 76 ms` — a comfortable 13x margin. At the
+> **shipped** `H = 10` you get `D_c = 0.20 s` against the same `L`, a margin of **2.6x**, which
+> a single scheduling hiccup consumes. The conclusion about whether synchronous execution is
+> safe flips between those two numbers, and the number people quote is the one that is not
+> shipped.
 
 `L` is measured end to end, and the honest definition includes everything: camera exposure,
 image transfer, preprocessing, tokenisation, denoising steps, and the trip back to the
@@ -112,7 +125,8 @@ depends on how fast your task evolves, not on a default from a config file.
   boundary, because chunk *n+1* was computed without knowing what chunk *n* actually executed.
 
 Measured, in the RTC paper's own setting: pi0.5 at 50 Hz control with 5 denoising steps takes
-**76 ms per inference** while the controller consumes an action every 20 ms. One inference
+**76 ms per inference** while the controller consumes an action every 20 ms. (That paper uses
+`H = 50` in its walkthrough. Note the horizon trap in §2 before assuming your own config does. One inference
 therefore occupies about four control steps (`d ≈ 4`, and closer to 6 once you add 10–20 ms of
 LAN communication). The action queue can only drain smoothly because a single inference
 produced an entire chunk — so the moment a chunk runs out before the next one lands, you get a
@@ -225,23 +239,29 @@ Oldest action age:  L + (H - 1) * T_c
 Chunk duration:     D_c = H / f_c
 ```
 
-Worked example — `L = 80 ms`, `f_c = 50 Hz`, `H = 50`:
+Worked example with the **shipped** horizon — `L = 76 ms`, `f_c = 50 Hz`, `H = 10`:
 
 ```
-D_c            = 50 / 50          = 1.000 s
-margin         = 1.000 / 0.080    = 12.5x        -> synchronous is fine
-oldest age     = 0.080 + 49*0.020 = 1.060 s      -> only OK if the task is quasi-static
+D_c            = 10 / 50          = 0.200 s
+margin         = 0.200 / 0.076    = 2.6x         -> jitter can consume this
+oldest age     = 0.076 + 9*0.020  = 0.256 s      -> fine for most manipulation
 ```
 
-The same model on hardware with `L = 400 ms` and `H = 50`:
+Compare the same model at the horizon everyone quotes, `H = 50`:
 
 ```
-margin         = 1.000 / 0.400    = 2.5x         -> jitter will eat this
+D_c            = 1.000 s
+margin         = 13.2x                           -> comfortable
+oldest age     = 0.076 + 49*0.020 = 1.056 s      -> a second-old observation at the chunk end
 ```
 
-At `H = 10` it becomes `0.200 / 0.400 = 0.5×` — the buffer starves every cycle. At that point
-the choice is: raise `H`, cut `L` (quantisation, distillation, smaller visual encoder), or go
-asynchronous. Anything else is guessing.
+The shipped horizon is the better trade for manipulation: it keeps the oldest observation
+under 300 ms at the cost of a 2.6x margin, which is why the field moved toward asynchronous
+execution rather than simply lengthening chunks. Lengthening `H` would buy margin and spend
+freshness — the two pressures pulling against each other in §5.
+
+To see when the buffer actually starves: at `L = 76 ms` the break-even is `H = 4`
+(`D_c = 80 ms`). Below that, synchronous execution cannot keep up at all.
 
 ---
 
