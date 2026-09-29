@@ -71,6 +71,17 @@ This field is the point of the whole repo. Most lists conflate "a paper exists" 
    warned about.
 3. **Numbers are attributed.** Any latency / VRAM / success-rate figure must name the
    hardware and the model. "Faster" without a number is not accepted.
+   **Grep the stem, then read the constructor.** When a flag name and its field name differ by
+   a character, a one-character grep error produces a plausible, publishable, wrong fact. We
+   hit this with `use_quantiles` versus `use_quantile`: the field is `use_quantile_norm`, and
+   the dataclass default is `False`, but line 187 of the same file derives it as
+   `model_type != ModelType.PI0` — so the default never survives construction. Grepping the
+   wrong string inverts the diagnosis of a documented production bug, and nothing about the
+   wrong answer looks wrong.
+   **Check the state of the thing you are citing as the fix.** A merged PR, a closed unmerged
+   PR, and an open issue are three different claims. We listed a closed-unmerged PR as the
+   resolution of the quantile-aggregation bug; the change that actually landed is a mitigation,
+   and the issue remains open. Read the state badge, not just the diff.
 4. **Negative results are wanted.** "We tried INT8 on model X and the policy broke" is more
    valuable than another citation. Put it in `notes`.
 5. **`verified` is a claim.** Bump it only when you actually opened the link.

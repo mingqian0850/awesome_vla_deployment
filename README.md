@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-155 entries · 60 production · 82 research · 9 toy · 4 abandoned
+156 entries · 61 production · 82 research · 9 toy · 4 abandoned
 
 </div>
 
@@ -402,6 +402,9 @@ Every figure here is quoted from a primary source that was fetched and read, not
 - **[openpi's fsq_tokenizer.py is not the pi0 action tokenizer](https://github.com/Physical-Intelligence/openpi)** — `repo` · `production` · verified 2026-09 · #tokenizer #fast #fsq #vqbet #disambiguation #trap
   - *What it is:* `fsq_tokenizer.py` exists in the openpi tree but its own header states it is for RoboArena baselines. It is **not** the pi0 action tokenizer, which is FAST (DCT plus BPE). The distinct action-VQ alternative in this space is VQ-BeT, which reports roughly 5x faster inference than Diffusion Policy and does not use action chunking.
   - *Why it matters here:* A reader skimming the repository for "how does pi0 tokenise actions" will find this file and conclude the wrong thing. Recorded because it is cheap to state and expensive to discover — you would build a training pipeline around the wrong tokenizer before noticing.
+- **[LeRobot relative-action support has a version floor](https://github.com/huggingface/lerobot/pull/2970)** — `docs` · `production` · verified 2026-09 · #versioning #relative-actions #flag #gotcha
+  - *What it is:* `RelativeActionsProcessorStep` and the `--operation.relative_action` / `--policy.use_relative_actions` flags landed in PR #2970, merged 2026-04-01.
+  - *Why it matters here:* On an older install you will find documentation for a feature your code does not have, which is a confusing failure mode: the flag is accepted-looking in the docs and absent in the source. Pin your revision and check the flag exists before following a tutorial — including this one. More generally, most of the practical knowledge in this repo is attached to a specific commit, and the entry-level `verified` date is not a version.
 
 
 ## Deployment — inference timing, optimisation, edge, integration
@@ -891,8 +894,8 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 **Cause 2 — Quantiles were aggregated across merged datasets by averaging per-source quantiles, which is mathematically invalid.**
 
 - **Test:** Count what fraction of your training values fall outside the saved `q01`/`q99`. If it is far above the expected ~2%, the statistics are wrong. This has been measured on a published dataset: on `lerobot/droid_1.0.1`, the shipped action `q01`/`q99` leave between 12.18% and 79.03% of action values outside the per-dimension range, against roughly 2% for exact full-data bounds. On a merged dataset, 41.65% of state joint 1 and 42.12% of action joint 1 values fell outside the saved quantiles while `mean` differed by only 1e-7.
-- **Fix:** Recompute quantiles over all frames rather than merging summaries. A repair tool exists for the DROID case. The reason this matters more than it sounds: everything outside `q01`/`q99` maps outside `[-1, 1]` after normalization, so for pi0.5 a large fraction of normal training samples have normalized targets outside the expected range — which changes the loss scale rather than producing an obvious error.
-- **Source:** <https://github.com/huggingface/lerobot/issues/4156> · <https://github.com/sawhney17/droid-quantile-repair> · <https://github.com/huggingface/lerobot/pull/4172>
+- **Fix:** Recompute quantiles over all frames rather than merging summaries; a repair tool exists for the DROID case. The reason this matters more than it sounds: everything outside `q01`/`q99` maps outside `[-1, 1]` after normalization, so for pi0.5 a large fraction of normal training samples have normalized targets outside the expected range — which changes the loss scale rather than producing an obvious error. **Status: mitigated, not solved.** The change that landed ([PR #3804](https://github.com/huggingface/lerobot/pull/3804), merged 2026-08-06) replaces the invalid weighted mean with a conservative min/max envelope — it deliberately *widens* `q01`/`q99` instead of computing them, which reduces the damage without producing correct quantiles. The stricter proposal that would have omitted the invalid aggregates ([PR #4172](https://github.com/huggingface/lerobot/pull/4172)) was **closed unmerged**, and the underlying issue ([#4156](https://github.com/huggingface/lerobot/issues/4156)) is **still open**. So do not read the fix as closure: an envelope is a bound, and it can still be wrong for your data.
+- **Source:** <https://github.com/huggingface/lerobot/issues/4156> · <https://github.com/huggingface/lerobot/pull/3804> · <https://github.com/sawhney17/droid-quantile-repair>
 
 **Cause 3 — The statistic key does not match the live camera or feature name, so a required entry is missing.**
 

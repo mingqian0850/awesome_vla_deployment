@@ -403,14 +403,24 @@ symptoms:
           and 42.12% of action joint 1 values fell outside the saved quantiles while `mean`
           differed by only 1e-7.
         fix: >
-          Recompute quantiles over all frames rather than merging summaries. A repair tool
+          Recompute quantiles over all frames rather than merging summaries; a repair tool
           exists for the DROID case. The reason this matters more than it sounds: everything
           outside `q01`/`q99` maps outside `[-1, 1]` after normalization, so for pi0.5 a large
           fraction of normal training samples have normalized targets outside the expected
           range — which changes the loss scale rather than producing an obvious error.
+          **Status: mitigated, not solved.** The change that landed
+          ([PR #3804](https://github.com/huggingface/lerobot/pull/3804), merged 2026-08-06)
+          replaces the invalid weighted mean with a conservative min/max envelope — it
+          deliberately *widens* `q01`/`q99` instead of computing them, which reduces the damage
+          without producing correct quantiles. The stricter proposal that would have omitted the
+          invalid aggregates ([PR #4172](https://github.com/huggingface/lerobot/pull/4172)) was
+          **closed unmerged**, and the underlying issue
+          ([#4156](https://github.com/huggingface/lerobot/issues/4156)) is **still open**. So do
+          not read the fix as closure: an envelope is a bound, and it can still be wrong for
+          your data.
         sources: ["https://github.com/huggingface/lerobot/issues/4156",
-                  "https://github.com/sawhney17/droid-quantile-repair",
-                  "https://github.com/huggingface/lerobot/pull/4172"]
+                  "https://github.com/huggingface/lerobot/pull/3804",
+                  "https://github.com/sawhney17/droid-quantile-repair"]
       - cause: "The statistic key does not match the live camera or feature name, so a required entry is missing."
         rank: 3
         test: >

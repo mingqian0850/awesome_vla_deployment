@@ -359,3 +359,19 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [tokenizer, fast, fsq, vqbet, disambiguation, trap]
+  - id: lerobot-relative-action-floor
+    name: "LeRobot relative-action support has a version floor"
+    url: "https://github.com/huggingface/lerobot/pull/2970"
+    type: docs
+    what: >
+      `RelativeActionsProcessorStep` and the `--operation.relative_action` /
+      `--policy.use_relative_actions` flags landed in PR #2970, merged 2026-04-01.
+    why: >
+      On an older install you will find documentation for a feature your code does not have,
+      which is a confusing failure mode: the flag is accepted-looking in the docs and absent in
+      the source. Pin your revision and check the flag exists before following a tutorial —
+      including this one. More generally, most of the practical knowledge in this repo is
+      attached to a specific commit, and the entry-level `verified` date is not a version.
+    maturity: production
+    verified: 2026-09
+    tags: [versioning, relative-actions, flag, gotcha]
