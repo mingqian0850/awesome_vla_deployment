@@ -304,3 +304,102 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [chunking, continuation, training, latency]
+  - id: delay-aware-diffusion
+    name: "Delay-Aware Diffusion Policy"
+    url: "https://arxiv.org/abs/2512.07697"
+    type: paper
+    what: "Trains a policy across a range of delays from zero up to the measured deployment delay, so the policy itself accounts for staleness."
+    why: >
+      Attacks the staleness term in the latency budget at training time instead of masking it
+      at the chunk seam. This is the counterpart to RTC: RTC makes the joint between chunks
+      smooth while leaving the frozen window locked, whereas a delay-aware policy has seen
+      delayed observations during training and can act sensibly on them. If your measured `d`
+      is large and your task is dynamic, this is the more principled direction.
+    maturity: research
+    verified: 2026-09
+    tags: [delay, staleness, training, latency, diffusion]
+  - id: speculative-policy-orchestration
+    name: "Speculative Policy Orchestration: A Latency-Resilient Framework for Cloud-Robotic Manipulation"
+    url: "https://arxiv.org/abs/2603.19418"
+    type: paper
+    what: "A latency-resilient orchestration framework for cloud-hosted manipulation policies, naming the failure mode directly: network latency and jitter can destabilise the system, causing command starvation and unsafe physical execution."
+    why: >
+      The clearest statement that over-the-network inference is a safety problem rather than a
+      performance problem. Read it before deciding to put the policy on a server, and use its
+      framing — command starvation — when you argue for a local fallback path.
+    maturity: research
+    verified: 2026-09
+    tags: [network, cloud, command-starvation, safety, orchestration]
+  - id: roboecc
+    name: "RoboECC: Multi-Factor-Aware Edge-Cloud Collaborative Deployment for VLA Models"
+    url: "https://arxiv.org/abs/2603.20711"
+    type: paper
+    what: "Decides which parts of a VLA model run on the edge and which in the cloud, trading compute pressure against real-time requirements."
+    why: >
+      Relevant when a single onboard device cannot host the whole model. The interesting part
+      for deployment is the split point, because it determines what your robot can still do
+      when the link degrades.
+    maturity: research
+    verified: 2026-09
+    tags: [edge-cloud, split-inference, offload]
+  - id: comvla
+    name: "ComVLA: Communication-Aware Split Inference for VLA Models in 6G-Connected Robotics"
+    url: "https://arxiv.org/abs/2609.07838"
+    type: paper
+    what: "Split inference that accounts for the communication link, targeting bandwidth-constrained connected robotics."
+    why: "The bandwidth-constrained half of the offload problem; complements RoboECC's compute-side view."
+    maturity: research
+    verified: 2026-09
+    tags: [split-inference, network, bandwidth, offload]
+  - id: viam-calibration-worksheet
+    name: "Frame calibration worksheet"
+    url: "https://github.com/viam-devrel/pick-and-place/blob/main/setup/frame-calibration-worksheet.md"
+    type: docs
+    what: "An actual fill-in-the-blanks worksheet for robot frame calibration, rather than API documentation."
+    why: >
+      Rare and directly reusable: most calibration material is library documentation, which
+      tells you how to call the function but not what a complete calibration record looks
+      like. This is a checklist artifact, and it is the kind of thing that prevents the
+      "checkpoint validated against which calibration" problem. Adapt it into
+      checklists/calibrate-a-new-robot.md rather than copying it wholesale.
+    maturity: production
+    verified: 2026-09
+    tags: [calibration, checklist, worksheet, procedure]
+  - id: ros2-control-mock
+    name: "ros2_control — mock components"
+    url: "https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/mock_components_userdoc.html"
+    type: docs
+    what: "Official mock hardware components that let you exercise controllers without a robot."
+    why: >
+      The closest official tooling to hardware-in-the-loop testing for a policy, with an
+      honest caveat: it tests controller plumbing, not the policy. Still worth using to
+      validate your command path, limits and watchdog wiring before touching hardware — that
+      is where the cheap bugs are.
+    maturity: production
+    verified: 2026-09
+    tags: [ros2, testing, hil, mock]
+  - id: ros2-tracing
+    name: "ros2_tracing"
+    url: "https://github.com/ros2/ros2_tracing"
+    type: repo
+    what: "Low-overhead tracing instrumentation for ROS 2, built on LTTng."
+    why: >
+      The measurement tool for the latency budget this repo keeps asking you to fill in.
+      Instrumenting a real control loop without perturbing it is genuinely hard; this is the
+      maintained way to do it in ROS 2.
+    maturity: production
+    verified: 2026-09
+    tags: [ros2, tracing, profiling, latency, measurement]
+  - id: tensorrt-dev-guide
+    name: "NVIDIA TensorRT Developer Guide"
+    url: "https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html"
+    type: docs
+    what: "Vendor reference for TensorRT: supported operators, precision modes, dynamic shapes and plugins."
+    why: >
+      The constraint reference to consult *before* promising an export path. Most failed VLA
+      exports fail on a specific unsupported operator or a dynamic-shape construct, and this
+      is where you find out whether yours is supported rather than discovering it after
+      writing the export script.
+    maturity: production
+    verified: 2026-09
+    tags: [tensorrt, export, operators, reference]

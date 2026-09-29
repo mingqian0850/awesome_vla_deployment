@@ -50,6 +50,12 @@ This field is the point of the whole repo. Most lists conflate "a paper exists" 
 
 1. **Every URL is machine-checked.** `scripts/check_links.py` runs in CI on every push and
    weekly on a schedule. A dead link fails the build.
+   The checker is deliberately **not naive**: it retries transient failures, falls back to the
+   Hugging Face API when HF HTML pages rate-limit in bulk, and honours a reviewed allowlist at
+   `data/link-exceptions.yaml`. A checker that treats every non-200 as dead will prune valid
+   resources — we confirmed seven distinct classes of genuinely-live URL that fail an automated
+   sweep (bot-blocked, gated, HTTP-only, IPv6-only, rate-limited, transient, paywalled).
+   **Never delete a resource to satisfy the checker; add an exception with a reason instead.**
 2. **No fabricated references.** Every `paper` entry must resolve to a real arXiv/DOI/venue
    page. Placeholder or unresolvable IDs are treated as a bug.
    (This is not hypothetical: a 433-star "deployment" list in this space contains 27

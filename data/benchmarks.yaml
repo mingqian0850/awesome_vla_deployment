@@ -225,17 +225,27 @@ entries:
     verified: 2026-09
     tags: [gap, onnx, tensorrt, export, parity, wanted]
   - id: gap-network-stall
-    name: "GAP — what the robot does during a network stall"
+    name: "GAP — what the robot does during a network stall (operational, not academic)"
     url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
     type: gap
     what: >
-      Still not published. Many papers assume an edge/cloud split; almost none publish jitter
-      distributions, dropped-frame rates, reconnect behaviour, or the behaviour of the robot
-      during a two-second network stall mid-chunk.
+      Narrower than it first appeared. The academic treatment exists and names the failure
+      mode precisely: a latency-resilient orchestration framework describes how network
+      latency and jitter "can severely destabilize the system, causing command starvation and
+      unsafe physical execution", and there is work on edge-cloud split inference and on
+      deciding what runs where under compute pressure.
+      What is still missing is the **operational** half: a post-mortem from a shipped robot
+      reporting jitter distributions, dropped-frame rates, reconnect behaviour, and what the
+      policy actually did during a two-second stall mid-chunk.
     why: >
       This is a safety question disguised as a networking question. The answer should be a
-      defined behaviour (decelerate to a stop along a safe path), and right now it is usually
-      whatever the framework happens to do, which is often "keep executing the stale chunk".
+      defined behaviour — decelerate to a stop along a safe path — and right now it is usually
+      whatever the framework happens to do, which is frequently "keep executing the stale
+      chunk". Papers tell you the problem is real; nobody tells you what their robot did.
     maturity: toy
     verified: 2026-09
     tags: [gap, network, safety, stall, wanted]
+    notes: >
+      We deliberately rewrote this after finding the academic work. The original claim that
+      the problem was undocumented was too broad, and an over-broad gap claim damages a
+      curated index as much as a dead link does.

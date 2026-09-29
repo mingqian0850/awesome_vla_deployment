@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-115 entries · 43 production · 60 research · 8 toy · 4 abandoned
+123 entries · 47 production · 64 research · 8 toy · 4 abandoned
 
 </div>
 
@@ -418,6 +418,30 @@ The reason this repo exists. Across 36 curated lists in this space, `watchdog|e-
 - **[Legato: Learning Native Continuation for Action Chunking Flow Policies](https://arxiv.org/abs/2602.12978)** — `paper` · `research` · verified 2026-09 · #chunking #continuation #training #latency
   - *What it is:* Learns the continuation of an action chunk natively, so a chunk can be extended instead of requiring a full re-inference.
   - *Why it matters here:* A learned route to the same goal as RTC's inference-time guidance: reduce how often you pay full inference cost, rather than patching the seams after the fact. Note the tradeoff against RTC — guidance is training-free and costs ~28% extra inference, while a learned continuation requires a training run but changes the cost structure itself.
+- **[Delay-Aware Diffusion Policy](https://arxiv.org/abs/2512.07697)** — `paper` · `research` · verified 2026-09 · #delay #staleness #training #latency #diffusion
+  - *What it is:* Trains a policy across a range of delays from zero up to the measured deployment delay, so the policy itself accounts for staleness.
+  - *Why it matters here:* Attacks the staleness term in the latency budget at training time instead of masking it at the chunk seam. This is the counterpart to RTC: RTC makes the joint between chunks smooth while leaving the frozen window locked, whereas a delay-aware policy has seen delayed observations during training and can act sensibly on them. If your measured `d` is large and your task is dynamic, this is the more principled direction.
+- **[Speculative Policy Orchestration: A Latency-Resilient Framework for Cloud-Robotic Manipulation](https://arxiv.org/abs/2603.19418)** — `paper` · `research` · verified 2026-09 · #network #cloud #command-starvation #safety #orchestration
+  - *What it is:* A latency-resilient orchestration framework for cloud-hosted manipulation policies, naming the failure mode directly: network latency and jitter can destabilise the system, causing command starvation and unsafe physical execution.
+  - *Why it matters here:* The clearest statement that over-the-network inference is a safety problem rather than a performance problem. Read it before deciding to put the policy on a server, and use its framing — command starvation — when you argue for a local fallback path.
+- **[RoboECC: Multi-Factor-Aware Edge-Cloud Collaborative Deployment for VLA Models](https://arxiv.org/abs/2603.20711)** — `paper` · `research` · verified 2026-09 · #edge-cloud #split-inference #offload
+  - *What it is:* Decides which parts of a VLA model run on the edge and which in the cloud, trading compute pressure against real-time requirements.
+  - *Why it matters here:* Relevant when a single onboard device cannot host the whole model. The interesting part for deployment is the split point, because it determines what your robot can still do when the link degrades.
+- **[ComVLA: Communication-Aware Split Inference for VLA Models in 6G-Connected Robotics](https://arxiv.org/abs/2609.07838)** — `paper` · `research` · verified 2026-09 · #split-inference #network #bandwidth #offload
+  - *What it is:* Split inference that accounts for the communication link, targeting bandwidth-constrained connected robotics.
+  - *Why it matters here:* The bandwidth-constrained half of the offload problem; complements RoboECC's compute-side view.
+- **[Frame calibration worksheet](https://github.com/viam-devrel/pick-and-place/blob/main/setup/frame-calibration-worksheet.md)** — `docs` · `production` · verified 2026-09 · #calibration #checklist #worksheet #procedure
+  - *What it is:* An actual fill-in-the-blanks worksheet for robot frame calibration, rather than API documentation.
+  - *Why it matters here:* Rare and directly reusable: most calibration material is library documentation, which tells you how to call the function but not what a complete calibration record looks like. This is a checklist artifact, and it is the kind of thing that prevents the "checkpoint validated against which calibration" problem. Adapt it into checklists/calibrate-a-new-robot.md rather than copying it wholesale.
+- **[ros2_control — mock components](https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/mock_components_userdoc.html)** — `docs` · `production` · verified 2026-09 · #ros2 #testing #hil #mock
+  - *What it is:* Official mock hardware components that let you exercise controllers without a robot.
+  - *Why it matters here:* The closest official tooling to hardware-in-the-loop testing for a policy, with an honest caveat: it tests controller plumbing, not the policy. Still worth using to validate your command path, limits and watchdog wiring before touching hardware — that is where the cheap bugs are.
+- **[ros2_tracing](https://github.com/ros2/ros2_tracing)** — `repo` · `production` · verified 2026-09 · #ros2 #tracing #profiling #latency #measurement
+  - *What it is:* Low-overhead tracing instrumentation for ROS 2, built on LTTng.
+  - *Why it matters here:* The measurement tool for the latency budget this repo keeps asking you to fill in. Instrumenting a real control loop without perturbing it is genuinely hard; this is the maintained way to do it in ROS 2.
+- **[NVIDIA TensorRT Developer Guide](https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html)** — `docs` · `production` · verified 2026-09 · #tensorrt #export #operators #reference
+  - *What it is:* Vendor reference for TensorRT: supported operators, precision modes, dynamic shapes and plugins.
+  - *Why it matters here:* The constraint reference to consult *before* promising an export path. Most failed VLA exports fail on a specific unsupported operator or a dynamic-shape construct, and this is where you find out whether yours is supported rather than discovering it after writing the export script.
 
 
 ## Deployment benchmarks — measured, not cited
@@ -466,9 +490,10 @@ Latency and quantisation numbers that named hardware actually produced. Every fi
 - **[GAP — a supported export path with an action-parity check](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #onnx #tensorrt #export #parity #wanted
   - *What it is:* Still open. ONNX/TensorRT export is a feature request rather than a supported path in the mainstream framework, and recipes live in third-party forks.
   - *Why it matters here:* What is missing is not just the export but the **action-parity harness**: after exporting, compare action chunks against the reference implementation on a fixed batch of observations, and report max absolute deviation. Without that check, an export that silently degrades the policy looks like a policy regression.
-- **[GAP — what the robot does during a network stall](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #network #safety #stall #wanted
-  - *What it is:* Still not published. Many papers assume an edge/cloud split; almost none publish jitter distributions, dropped-frame rates, reconnect behaviour, or the behaviour of the robot during a two-second network stall mid-chunk.
-  - *Why it matters here:* This is a safety question disguised as a networking question. The answer should be a defined behaviour (decelerate to a stop along a safe path), and right now it is usually whatever the framework happens to do, which is often "keep executing the stale chunk".
+- **[GAP — what the robot does during a network stall (operational, not academic)](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #network #safety #stall #wanted
+  - *What it is:* Narrower than it first appeared. The academic treatment exists and names the failure mode precisely: a latency-resilient orchestration framework describes how network latency and jitter "can severely destabilize the system, causing command starvation and unsafe physical execution", and there is work on edge-cloud split inference and on deciding what runs where under compute pressure. What is still missing is the **operational** half: a post-mortem from a shipped robot reporting jitter distributions, dropped-frame rates, reconnect behaviour, and what the policy actually did during a two-second stall mid-chunk.
+  - *Why it matters here:* This is a safety question disguised as a networking question. The answer should be a defined behaviour — decelerate to a stop along a safe path — and right now it is usually whatever the framework happens to do, which is frequently "keep executing the stale chunk". Papers tell you the problem is real; nobody tells you what their robot did.
+  - *Note:* We deliberately rewrote this after finding the academic work. The original claim that the problem was undocumented was too broad, and an over-broad gap claim damages a curated index as much as a dead link does.
 
 
 ## Evaluation

@@ -1,0 +1,36 @@
+# URLs that a human has verified as live but that fail automated checking.
+#
+# Why this file exists: a link checker that treats any non-200 as dead will prune valid
+# resources. We confirmed every failure class below by retry while assembling this list —
+# these are real pages that scripts cannot reach.
+#
+# Rules:
+#   - Add an entry only after opening the URL yourself and confirming the page is real.
+#   - Always set `verified` to the month you checked.
+#   - Prefer the shortest URL that works (e.g. an API endpoint instead of a rate-limited
+#     HTML page) over an allowlist entry. The allowlist is a last resort, not a shortcut.
+#   - Never add an entry to hide a link that is actually dead. Delete the resource instead.
+#
+# Currently empty: every URL in data/*.yaml resolves through the normal path.
+
+exceptions: []
+
+# Example entry, showing the shape and the kind of reason that justifies one:
+#
+# exceptions:
+#   - url: "https://huggingface.co/datasets/some/gated-dataset"
+#     reason: >
+#       Legitimately gated (`gated: auto`). Returns 401 anonymously by design; the HF API
+#       reports the repo as existing and requiring auth. Confirmed in a browser.
+#     verified: 2026-09
+
+# Known failure classes worth recognising before declaring a link dead:
+#
+#   - transient 000/4xx under rapid sequential requests (GitHub throttling, some CDNs)
+#     -> retry individually; the checker already does this once
+#   - HTTP-only hosts: `https://` returns 000, `http://` returns 200
+#   - IPv6-only hosts, unreachable from IPv4-only CI runners
+#   - Hugging Face: HTML 429s in bulk while https://huggingface.co/api/... stays 200
+#     -> the checker falls back to the API automatically
+#   - bot-blocked but real: 403 to scripts, 200 in a browser (forums, some vendor sites)
+#   - paywalled-but-real: cite the DOI or the publisher landing page, and say so

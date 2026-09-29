@@ -39,10 +39,17 @@ MATURITY_NOTE = {
 
 
 def load():
+    """All data/*.yaml that describe content. link-exceptions.yaml is tooling config, not
+    content, and has no `section` — skip it rather than teaching it the content schema."""
     docs = []
     for path in sorted(glob.glob(os.path.join(DATA, "*.yaml"))):
+        if os.path.basename(path) == "link-exceptions.yaml":
+            continue
         with open(path, encoding="utf-8") as f:
             doc = yaml.safe_load(f)
+        if not isinstance(doc, dict) or "section" not in doc:
+            print(f"warning: skipping {os.path.basename(path)} — no 'section' key", file=sys.stderr)
+            continue
         doc["_file"] = os.path.basename(path)
         docs.append(doc)
     docs.sort(key=lambda d: d.get("order", 999))
