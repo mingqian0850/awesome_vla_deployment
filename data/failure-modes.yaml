@@ -1,0 +1,194 @@
+section: "Troubleshooting — symptom to root cause to fix"
+order: 90
+description: >
+  Nothing comparable exists in English for VLA. Read the causes in order — they are ranked
+  by how often they turn out to be the answer, not by how interesting they are. The `test`
+  field is always something you can run in under an hour; run it before changing anything.
+  Guessing at fixes here is how people lose weeks.
+
+  Two scripts implement the tests referenced below:
+  `scripts/diag_dataset.py` (data-side) and `scripts/diag_policy.py` (model-side).
+symptoms:
+  - id: only-first-action
+    symptom: "The policy executes the first sub-task of a chained task, then stalls or repeats it — regardless of the initial state."
+    severity: high
+    frequency: "extremely common"
+    causes:
+      - cause: "Phase aliasing — the same observation requires different actions in different phases, and nothing in the input says which phase you are in."
+        rank: 1
+        test: >
+          Take each frame, find its K nearest neighbours in state space, and measure how
+          spread out those neighbours are along normalised episode time. A mean spread above
+          ~0.10 means states recur across phases. Run
+          `python scripts/diag_dataset.py <dataset> --n-phases 3`.
+        fix: >
+          Label every frame with its CURRENT sub-task and use that as the instruction, keeping
+          the episodes intact. Then make sure the label actually reaches the policy — see the
+          next cause. Reweighting or rebalancing the dataset cannot fix an unidentifiable
+          input; the conditional distribution is genuinely multivalued and a flow-matching
+          head will regress to the mean of the modes, which the robot shows as stalling.
+      - cause: "A dead proprioceptive state channel — the policy is effectively vision-only."
+        rank: 2
+        test: >
+          Print per-dimension mean/std of `observation.state`; a constant or all-zero
+          dimension is dead. Then ablate the state at inference: replace it with zeros and
+          with another frame's state, and measure how far the predicted action chunk moves
+          relative to the natural cross-observation variation.
+          `python scripts/diag_policy.py --dataset <ds> --config <cfg> --test ablate`.
+        fix: >
+          pi0.5 feeds the state as discretised tokens into the VLM. Dim order, scale, and the
+          q01/q99 normalisation statistics must match the checkpoint. Recompute the statistics
+          on your own dataset; do not reuse the pretrained ones. If enough state dimensions are
+          dead or mis-scaled, the tokens are constant and phase becomes unobservable.
+      - cause: "The action expert has collapsed to the unconditional mean action."
+        rank: 3
+        test: >
+          Predict chunks for observations sampled across the whole episode. If the predictions
+          barely differ between wildly different states, the conditioning is gone.
+          `python scripts/diag_policy.py ... --test collapse`.
+        fix: >
+          Usually learning rate too high, too few steps for the frozen-VLM recipe, or action
+          targets/normalisation wrong such that predicting the mean is the loss optimum.
+          Check the chunk targets first: verify that `actions[t, k]` really is the action at
+          frame `t+k` within the same episode, and that the flow-matching loss is masked on
+          padded steps.
+      - cause: "Idle frames at the head of every episode taught the policy to do nothing at the reset state."
+        rank: 4
+        test: "Compare the fraction of near-zero-action frames in the first ~10 frames of each episode against the rest of the episode."
+        fix: >
+          Drop or down-weight those frames and retrain. This is the cheapest fix in the whole
+          document and it is frequently the answer — if the operator starts recording before
+          touching the controller, every episode contributes a large, perfectly consistent
+          'at this state, do not move' sample.
+      - cause: "Episode-head frames dominate and the policy never sees the later phases from its own state distribution (covariate shift)."
+        rank: 5
+        test: >
+          Open-loop check: put the robot or the recorded state back onto the expert trajectory,
+          feed the expert observation, and see whether the predicted chunk reproduces the
+          expert's continuation. If open loop is fine but closed loop stalls, the model is not
+          the problem.
+        fix: >
+          Collect recovery and intermediate-start data: start the robot at the entrance state
+          of every sub-task, including slightly off-expert states. This is the only thing that
+          actually addresses compounding error.
+    sources:
+      - "https://mlanthology.org/corl/2025/jain2025corl-enabling/"
+      - "https://arxiv.org/abs/2509.07953"
+  - id: stalls-at-start
+    symptom: "The robot hesitates or does not move at the beginning of a rollout, then behaves normally."
+    severity: medium
+    frequency: common
+    causes:
+      - cause: "Near-zero actions recorded at the start of each episode (recording started before teleoperation began)."
+        rank: 1
+        test: "Measure the mean action magnitude of the first N frames of each episode versus the episode median."
+        fix: "Trim the head frames at dataset build time, or start recording only once motion begins. Also check the tail — operators often stop moving before stopping the recording."
+      - cause: "Observation pipeline latency: the first inference runs on a stale or uninitialised observation."
+        rank: 2
+        test: "Log the timestamp of the observation that produced each action chunk and compare against the control-loop tick that consumed it."
+        fix: "Prime the inference pipeline before enabling the controller, and discard the first chunk if its observation predates the start of the rollout."
+  - id: stutter-and-stop
+    symptom: "Motion is jerky, or the robot moves in short bursts with pauses between them."
+    severity: high
+    frequency: common
+    causes:
+      - cause: "Re-planning every control step while only the first few steps of each predicted chunk are trustworthy."
+        rank: 1
+        test: "Compare `n_action_steps = 1` against executing the full chunk (or a majority of it). Measure both smoothness and task success."
+        fix: "Execute more of each chunk, use temporal ensembling to blend overlapping chunks, or adopt RTC for asynchronous execution. See `data/deployment.yaml`."
+      - cause: "Inference latency exceeds the wall-clock duration of the chunk being executed."
+        rank: 2
+        test: "Measure end-to-end inference latency (observation in, chunk out) and compare it to `chunk_size / control_fps`."
+        fix: "Either increase the chunk horizon, shorten inference (quantisation, distillation, smaller visual encoder), or decouple inference from control asynchronously."
+      - cause: "Action space mismatch between training and deployment — absolute versus delta, or a different control frequency."
+        rank: 3
+        test: "Correlate `action[t]` against `state[t+1] - state[t]` versus `state[t+1]`. Whichever correlates more strongly indicates the convention your data was recorded in."
+        fix: "Match the convention the checkpoint was trained with, and confirm the training frame rate equals the deployment control rate. A chunk horizon is defined in frames, so a frequency mismatch silently changes its physical duration."
+  - id: chunk-tail-garbage
+    symptom: "Only the first step or two of each predicted action chunk look correct; the rest is wrong."
+    severity: high
+    frequency: common
+    causes:
+      - cause: "Chunk targets are padded over the end of the episode and the loss is not masked there."
+        rank: 1
+        test: >
+          Compute the mean valid fraction of each chunk target (frames near an episode end have
+          partially invalid targets) and plot the loss as a function of chunk index k. If loss
+          is low at k=0 and rises sharply, suspect the targets.
+          `python scripts/diag_dataset.py <dataset> --chunk-size 50`.
+        fix: >
+          Mask the flow-matching loss on padded steps, and check what value the loader pads
+          with. Repeating the last valid action is far less harmful than padding with zeros,
+          which explicitly teaches 'stop moving' at the end of every chunk.
+      - cause: "Genuine multimodality that the model is averaging along the horizon."
+        rank: 2
+        test: "Run the collapse test from the first symptom; if the k=0 action is also inflated or wrong, it is conditioning, not padding."
+        fix: "Resolve the phase ambiguity first. Mode averaging is a symptom of an under-specified input, not a loss-function bug."
+  - id: ignores-instruction
+    symptom: "Changing the language instruction has no effect on behaviour."
+    severity: high
+    frequency: "common"
+    causes:
+      - cause: "The instruction never reaches the tokenizer — wrong key name or a prompt dropped in the observation transform."
+        rank: 1
+        test: "Ablate the prompt at inference (empty string, then a completely different instruction) and measure the change in predicted actions relative to the natural cross-observation variation."
+        fix: "Fix the observation plumbing. Then verify that each training frame carries its own instruction rather than one global string for the whole episode."
+      - cause: "One global instruction for a chained task, so the instruction cannot disambiguate phases even in principle."
+        rank: 2
+        test: "Check how many distinct instruction strings are in the dataset relative to the number of sub-tasks."
+        fix: "Re-label per sub-task segment. This is the same root cause as the phase-aliasing symptom and the same fix."
+      - cause: "Co-training or fine-tuning let the action expert drift away from the language-conditioned representation."
+        rank: 3
+        test: "Evaluate the fine-tuned policy on a paraphrased instruction set. If paraphrases fail but the exact training string works, the model has memorised the string rather than grounded it."
+        fix: "Include instruction paraphrases in the fine-tuning data. See the pi0.5 knowledge-insulation approach if you are co-training on heterogeneous data."
+  - id: fails-on-new-robot
+    symptom: "The policy works on the robot it was trained on and fails completely on a different arm or gripper."
+    severity: high
+    frequency: common
+    causes:
+      - cause: "Action space and normalisation statistics do not match the new embodiment."
+        rank: 1
+        test: "Compare per-dimension q01/q99 of your actions and states against the statistics stored with the checkpoint."
+        fix: "Recompute statistics on the target embodiment's own data. Reusing pretrained quantiles on a new robot silently squashes small motions into the middle of the range, which presents as 'the policy barely moves'."
+      - cause: "Action dimension or ordering differs, and the mismatch is being absorbed by padding."
+        rank: 2
+        test: "Print the raw action vector alongside the state vector for a few frames and check the joint ordering matches the URDF you are commanding."
+        fix: "Fix the ordering explicitly and re-verify. Padded or permuted dimensions can train to a plausible-looking loss while producing physically wrong motion."
+      - cause: "Camera pose and intrinsics differ, so the visual conditioning is out of distribution."
+        rank: 3
+        test: "Hold the policy's view fixed and ablate the images; then compare the deployment camera pose against the recorded one."
+        fix: "Match camera placement first — it is cheaper than retraining. If you cannot, collect a small amount of data on the new setup and fine-tune rather than expecting transfer."
+  - id: sim-works-real-fails
+    symptom: "Excellent success rate in simulation, poor on hardware."
+    severity: high
+    frequency: "very common"
+    causes:
+      - cause: "Covariate shift: the policy has never seen the states its own errors lead to."
+        rank: 1
+        test: "Open-loop teacher forcing on expert states. Good open-loop accuracy with bad closed-loop performance is the signature."
+        fix: "Recovery data and intermediate-state initialisation, as in the first symptom. Also consider DAgger-style correction collection."
+      - cause: "Simulation-only visual and dynamic fidelity gaps (lighting, textures, friction, compliance, latency)."
+        rank: 2
+        test: "Evaluate on randomised visual conditions in sim; if performance collapses, you are measuring a visual shortcut rather than a policy."
+        fix: "Domain randomisation, and more importantly real data. Note that sim evaluation is a screening tool, not a proxy for deployment readiness."
+      - cause: "No latency model: the deployment loop is slower than the training loop assumed."
+        rank: 3
+        test: "Measure the real observation-to-action latency and re-run the evaluation with that delay injected in sim."
+        fix: "Fix the timing architecture (see the stutter symptom) rather than retraining."
+  - id: eval-numbers-not-trustworthy
+    symptom: "Success rate moves by 20 points between evaluation runs with no code change."
+    severity: medium
+    frequency: common
+    causes:
+      - cause: "Too few trials to distinguish the conditions."
+        rank: 1
+        test: "Compute a confidence interval on your current trial count. Twenty trials cannot resolve a ten-point difference."
+        fix: "Pre-register the number of trials and the initial conditions. Randomise object poses across trials and report intervals, not point estimates."
+      - cause: "Initial conditions are not controlled, so you are measuring the object placement distribution as much as the policy."
+        rank: 2
+        test: "Log the initial object pose per trial and check whether failures cluster in particular regions."
+        fix: "Define a fixed, documented set of initial states and reuse it across every comparison. This also makes failures debuggable, because the same setup can be replayed."
+      - cause: "Thermal or calibration drift over a long evaluation session."
+        rank: 3
+        test: "Run the same fixed condition at the start and end of the session and compare."
+        fix: "Interleave conditions rather than running them in blocks, and re-check calibration between blocks."

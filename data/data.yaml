@@ -1,0 +1,154 @@
+section: "Data — collection, annotation, cleaning, segmentation"
+order: 20
+description: >
+  The paper-level curation of this area is already done well elsewhere — see
+  AIDASLab's list and Awesome-Robot-Data-Engine in the Landscape section. This section
+  therefore focuses on the two things those lists do not give you: the collection
+  systems themselves, and the reproducible decisions (thresholds, schemas, splits).
+entries:
+  - id: lerobot-docs
+    name: "LeRobot documentation"
+    url: "https://huggingface.co/docs/lerobot/index"
+    type: docs
+    what: "First-party docs for the most widely used open robot-learning stack: hardware assembly, calibration, teleoperation, dataset format, training and rollout."
+    why: "The single most practical starting point in the field, and the reference implementation for the LeRobot dataset format everything else converts to or from."
+    maturity: production
+    verified: 2026-09
+    license: Apache-2.0
+    tags: [docs, teleoperation, calibration, format]
+  - id: lerobot-il-robots
+    name: "LeRobot — imitation learning on real robots"
+    url: "https://huggingface.co/docs/lerobot/en/il_robots"
+    type: docs
+    what: "End-to-end walkthrough: build, calibrate, teleoperate, record, train, evaluate."
+    why: "Contains the operational detail (calibration procedure, teleoperation setup) that papers omit and that eats your first week."
+    maturity: production
+    verified: 2026-09
+    tags: [docs, calibration, teleoperation]
+  - id: lerobot-so101
+    name: "LeRobot — SO-101 assembly and calibration"
+    url: "https://huggingface.co/docs/lerobot/en/so101"
+    type: docs
+    what: "Bill-of-materials-level build and calibration guide for the SO-101 arm."
+    why: "A worked example of the calibration discipline every learned policy depends on. The procedure generalises even if your arm is different."
+    maturity: production
+    verified: 2026-09
+    tags: [hardware, calibration, docs]
+  - id: aloha
+    name: "ALOHA / Mobile ALOHA"
+    url: "https://github.com/MarkFzp/mobile-aloha"
+    type: repo
+    what: "Low-cost bimanual teleoperation and imitation learning platform; the origin of the widely copied leader-follower collection rig."
+    why: "The reference architecture for bimanual data collection. Cheap, replicable, and the hardware design has been reimplemented by many labs."
+    maturity: research
+    verified: 2026-09
+    tags: [teleoperation, bimanual, hardware]
+  - id: umi
+    name: "Universal Manipulation Interface (UMI)"
+    url: "https://github.com/real-stanford/universal_manipulation_interface"
+    type: repo
+    what: "Hand-held gripper with a camera that collects manipulation demonstrations in the wild, without a robot present; policy is deployed on a robot later."
+    why: "Decouples data volume from robot availability — the main practical bottleneck in collection. Its in-the-wild capture also gives the visual diversity that fixes overfitting to one table setup."
+    maturity: research
+    verified: 2026-09
+    tags: [teleoperation, robot-free, hardware]
+  - id: open-television
+    name: "Open-TeleVision"
+    url: "https://github.com/OpenTeleVision/TeleVision"
+    type: repo
+    what: "VR-based immersive teleoperation with stereo streaming and active vision, for bimanual and humanoid platforms."
+    why: "Faster and more natural collection than leader-follower arms, and it records head/vision motion which is otherwise impossible to demonstrate."
+    maturity: research
+    verified: 2026-09
+    tags: [teleoperation, vr]
+  - id: robot-teach
+    name: "robot_teach (Open-Teach)"
+    url: "https://github.com/chiawenwang/robot_teach"
+    type: repo
+    what: "One-shot physical teaching: a single human demonstration from VR hand tracking produces a reusable policy."
+    why: "Interesting for data efficiency — worth knowing when the question is 'how few demonstrations can I get away with', which is most people's real constraint."
+    maturity: research
+    verified: 2026-09
+    tags: [teleoperation, one-shot, vr]
+  - id: robomimic
+    name: "robomimic"
+    url: "https://github.com/ARISE-Initiative/robomimic"
+    type: repo
+    what: "Framework for offline imitation learning from demonstration, with standard datasets, and the reference implementation of the 'What Matters in Learning from Offline Human Demonstrations' study."
+    why: "The most rigorous public evidence on which data-quality factors actually move success rate. Read it before assuming more data is the answer — number of demonstrations, operator quality and diversity often matter more than volume."
+    maturity: production
+    verified: 2026-09
+    license: MIT
+    tags: [imitation-learning, data-quality, study]
+  - id: robosuite
+    name: "robosuite"
+    url: "https://github.com/ARISE-Initiative/robosuite"
+    type: repo
+    what: "Modular simulation framework for robot manipulation, the sim backend behind robomimic."
+    why: "Useful for pre-flight checks and for generating targeted recovery data before spending robot time."
+    maturity: production
+    verified: 2026-09
+    tags: [simulation]
+  - id: mimicgen
+    name: "MimicGen"
+    url: "https://github.com/NVlabs/MimicGen"
+    type: repo
+    what: "Generates large-scale demonstration datasets from a small number of human demonstrations by transforming object poses and replanning."
+    why: "The most credible way to multiply scarce human demonstrations. Note the caveat that generated data inherits the failure modes of the source trajectories — it will not fix bad teleoperation."
+    maturity: research
+    verified: 2026-09
+    tags: [data-generation, simulation]
+  - id: open-x-embodiment
+    name: "Open X-Embodiment"
+    url: "https://robotics-transformer-x.github.io/"
+    type: dataset
+    what: "Aggregated cross-embodiment robot manipulation dataset spanning many robots and labs, in RLDS format."
+    why: "The standard co-training corpus. Mostly useful as regularisation against overfitting a small in-house dataset, not as a task-specific training set."
+    maturity: production
+    verified: 2026-09
+    tags: [dataset, cross-embodiment]
+  - id: open-x-embodiment-repo
+    name: "google-deepmind/open_x_embodiment"
+    url: "https://github.com/google-deepmind/open_x_embodiment"
+    type: repo
+    what: "Code and per-dataset documentation for loading Open X-Embodiment."
+    why: "The practical entry point — the project page alone will not get the data into your training loop."
+    maturity: production
+    verified: 2026-09
+    tags: [dataset, rlds, tooling]
+  - id: data-curation-paper
+    name: "Robot Data Curation"
+    url: "https://arxiv.org/abs/2502.08623"
+    type: paper
+    what: "Studies how to curate robot demonstration data, including a practical demonstration-influence-style filtering approach."
+    why: "Gives you a defensible answer to 'should I throw away these episodes' instead of guessing."
+    maturity: research
+    verified: 2026-09
+    tags: [data-quality, filtering, paper]
+  - id: curating-online-experience
+    name: "Curating Demonstrations using Online Experience"
+    url: "https://arxiv.org/abs/2503.03707"
+    type: paper
+    what: "Uses online interaction experience to select which demonstrations are worth training on."
+    why: "Data selection driven by what the policy actually gets wrong, which is usually a much better signal than any offline heuristics."
+    maturity: research
+    verified: 2026-09
+    tags: [data-quality, selection, paper]
+  - id: subgoal-transitions
+    name: "Enabling Long(er) Horizon Imitation for Manipulation Tasks by Modeling Subgoal Transitions"
+    url: "https://mlanthology.org/corl/2025/jain2025corl-enabling/"
+    type: paper
+    what: "Models transitions between subgoals to extend the effective horizon of imitation-learned manipulation policies."
+    why: "Directly addresses the failure where a chained policy executes the first sub-task and then stalls — which is the single most reported symptom in this space."
+    maturity: research
+    verified: 2026-09
+    tags: [long-horizon, subgoal, paper]
+  - id: rac-recovery
+    name: "RaC: Robot Learning for Long-Horizon Tasks by Scaling Recovery and Correction"
+    url: "https://arxiv.org/abs/2509.07953"
+    type: paper
+    what: "Scales up recovery and correction data to make long-horizon policies robust to their own errors."
+    why: "The clearest statement of the thing practitioners learn the hard way: long-horizon failures are usually covariate shift, and the fix is recovery data — not more demonstrations of the happy path."
+    maturity: research
+    verified: 2026-09
+    tags: [long-horizon, recovery, paper]

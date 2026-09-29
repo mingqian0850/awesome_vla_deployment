@@ -1,0 +1,33 @@
+name: link-rot
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"    # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pyyaml
+
+      - name: Check links
+        id: links
+        continue-on-error: true
+        run: python scripts/check_links.py --no-cache 2> links-report.txt
+
+      - name: Open an issue if anything rotted
+        if: steps.links.outcome == 'failure'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Link rot detected — entries need review"
+          content-filepath: ./links-report.txt
+          labels: link-rot, automated

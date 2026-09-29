@@ -1,0 +1,8 @@
+# data-side diagnostics and the README generator
+pyyaml>=6.0
+numpy>=1.24
+pyarrow>=14.0        # reading LeRobot parquet shards directly
+
+# model-side diagnostics (diag_policy.py) additionally need your own environment:
+#   openpi   (Physical-Intelligence/openpi)
+#   lerobot  (huggingface/lerobot)  -- for decoding dataset frames/videos

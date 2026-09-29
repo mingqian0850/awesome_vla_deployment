@@ -1,0 +1,201 @@
+section: "Landscape — what already exists"
+order: 10
+description: >
+  Read this before adding anything. Most of the VLA space is already curated; this repo
+  only exists because one specific slice is not. Linking to these instead of duplicating
+  them is the difference between a useful list and noise.
+
+  Star counts and last-commit dates are a 2026-09 snapshot.
+entries:
+  - id: keon-awesome-physical-ai
+    name: "keon/awesome-physical-ai"
+    url: "https://github.com/keon/awesome-physical-ai"
+    type: list
+    what: >
+      433 stars. The only curated list in this space with a literal `## Deployment`
+      section (Quantization & Compression, Real-Time Control) plus `## Safety & Alignment`.
+    why: >
+      DO NOT USE. It is the single most likely trap for a reader looking for deployment
+      material.
+    maturity: abandoned
+    verified: 2026-09
+    license: unknown
+    tags: [trap, do-not-cite]
+    notes: >
+      Verified on 2026-09-29: the Deployment and Safety sections contain 27 fabricated
+      placeholder arXiv IDs of the form `2505.XXXXX` / `2512.XXXXX`, attached to real-looking
+      names (BitVLA, QuaRT-VLA, RTC, ASIMOV, RoboGuard). `grep -c XXXXX` on this file returns
+      27; the same grep across 32 other READMEs in this space returns 0. The content reads as
+      LLM-generated. Last commit 2026-06-24. Kept here, dated and labelled, because a reader
+      will find it and needs to know.
+  - id: vla-handbook
+    name: "sou350121/VLA-Handbook"
+    url: "https://github.com/sou350121/VLA-Handbook"
+    type: list
+    what: >
+      662 stars, Chinese, updated daily by a cron pipeline. ~525 theory docs plus a
+      deployment/ tree: hardware selection *with pricing*, ROS2 zero-copy/DDS tuning, edge
+      deployment (GPTQ/AWQ, TensorRT-LLM, vLLM), agentic VLA layering with latency budgets,
+      camera calibration, multimodal sync, UR5 ur_rtde realtime kernel, GELLO teleop, pi0
+      deployment, dexterous-hand CANFD/EtherCAT, sim2real.
+    why: >
+      This is the closest thing to an existing occupant of our niche, and it proves the niche
+      is real. It is 100% Chinese, which is exactly why an English-first equivalent is worth
+      building. Read it if you read Chinese; it is strictly ahead of us on hardware specifics.
+      Our differentiation is English reach, verified provenance, and measured numbers.
+    maturity: production
+    verified: 2026-09
+    license: unknown
+    tags: [competitor, chinese, handbook, deployment]
+    notes: >
+      Also distils 300+ Xiaohongshu posts, 165 English blogs, 135 LeRobot Discord threads and
+      200+ GitHub issues, including a GPU compatibility matrix (RTX50/Jetson), pi0 fine-tune
+      traps, GR00T VRAM requirements, and convergence-failure root causes.
+  - id: awesome-embodied-vla-va-vln
+    name: "jonyzhang2023/awesome-embodied-vla-va-vln"
+    url: "https://github.com/jonyzhang2023/awesome-embodied-vla-va-vln"
+    type: list
+    what: "3.5k stars. The largest paper index for VLA / VLN / VA / world-action models, organised by year, with Sim-to-Real, Benchmarks and Simulators sections."
+    why: "Use it to find papers. It has essentially no engineering content — its 'quantization' hits are paper titles, not tooling."
+    maturity: production
+    verified: 2026-09
+    tags: [papers, index]
+  - id: gt-ripl-awesome-llm-robotics
+    name: "GT-RIPL/Awesome-LLM-Robotics"
+    url: "https://github.com/GT-RIPL/Awesome-LLM-Robotics"
+    type: list
+    what: "4.5k stars. LLM/VLM-for-robotics papers grouped by task."
+    why: "Background reading for the language side of VLA."
+    maturity: production
+    verified: 2026-09
+    tags: [papers, index, llm]
+  - id: awesome-humanoid-robot-learning
+    name: "YanjieZe/awesome-humanoid-robot-learning"
+    url: "https://github.com/YanjieZe/awesome-humanoid-robot-learning"
+    type: list
+    what: "2.8k stars. Humanoid papers with dedicated `## Teleoperation` and `## Hardware Design` sections."
+    why: "The teleoperation section is paper-level, but it is the best single index of teleoperation *systems* to start from."
+    maturity: production
+    verified: 2026-09
+    tags: [humanoid, teleoperation, hardware]
+  - id: awesome-physical-ai-natnew
+    name: "natnew/awesome-physical-ai"
+    url: "https://github.com/natnew/awesome-physical-ai"
+    type: list
+    what: >
+      151 stars. `## Production Patterns / Reference Architectures` (ROS2, Isaac ROS, MoveIt2,
+      Nav2, Open-RMF, DDS-Security, Foxglove, micro-ROS, ros2_control, Cyclone/FastDDS, MCAP,
+      Zenoh, rosbag2), `## Safety & Robustness` (safe-RL, control barrier functions, RSS,
+      formal verification), `## Governance` (ISO 10218, ISO/TS 15066, ISO 26262, UL 4600,
+      EU AI Act), plus courses and hardware platforms.
+    why: >
+      The strongest governance/standards coverage anywhere. But it never connects any of it to
+      a running VLA inference loop: 0 TensorRT/ONNX/quantization, 0 e-stop/watchdog, 0 subtask,
+      0 data cleaning. That gap is our section 43.
+    maturity: production
+    verified: 2026-09
+    tags: [middleware, standards, ros2]
+  - id: aidaslab-data-curation
+    name: "AIDASLab/Awesome-VLA-Data-Collection-Synthesis-Curation"
+    url: "https://github.com/AIDASLab/Awesome-VLA-Data-Collection-Synthesis-Curation"
+    type: list
+    what: "220+ papers across Curation, Cleaning & Preprocessing; Annotation & Relabeling; Task Curation & Dataset Design; Real-World Capture & Robot-Free Collection; cross-embodiment augmentation; neural trajectories."
+    why: "This owns the paper-level data lifecycle. We link here rather than re-curating the same papers — our data docs are about reproducible pipelines and thresholds instead."
+    maturity: research
+    verified: 2026-09
+    tags: [data, curation, papers]
+    notes: "Only ~11 stars. Treat 'well covered' as well-covered-in-content, not well-known."
+  - id: awesome-robot-data-engine
+    name: "chang-xinhai/Awesome-Robot-Data-Engine"
+    url: "https://github.com/chang-xinhai/Awesome-Robot-Data-Engine"
+    type: list
+    what: "Large index (226 KB) covering collection, processing/curation, UMI, human and egocentric data, simulation, Formats/Infrastructure, and mixing/scaling."
+    why: "The best single reference for data-engine plumbing and format questions."
+    maturity: research
+    verified: 2026-09
+    tags: [data, formats, papers]
+    notes: "Only ~3 stars."
+  - id: awesome-long-horizon-robot-manipulation
+    name: "Ziteng-Wang/Awesome-Long-Horizon-Robot-Manipulation"
+    url: "https://github.com/Ziteng-Wang/Awesome-Long-Horizon-Robot-Manipulation"
+    type: list
+    what: "Taxonomy of long-horizon manipulation: mechanisms, Memory/Progress/Recovery, benchmarks."
+    why: "The best existing index for the long-horizon failure modes that dominate real deployments — and it has 0 stars, which tells you how under-served this area is."
+    maturity: research
+    verified: 2026-09
+    tags: [long-horizon, segmentation, papers]
+  - id: awesome-vla-yueen-ma
+    name: "yueen-ma/Awesome-VLA"
+    url: "https://github.com/yueen-ma/Awesome-VLA"
+    type: list
+    what: "674 stars. Companion paper list to a TNNLS survey."
+    why: "Good orientation reading on model families."
+    maturity: production
+    verified: 2026-09
+    tags: [papers, index]
+  - id: awesome-rl-vla
+    name: "Denghaoyuan123/Awesome-RL-VLA"
+    url: "https://github.com/Denghaoyuan123/Awesome-RL-VLA"
+    type: list
+    what: "863 stars. RL post-training for VLA models."
+    why: "Relevant once you have a working SFT policy and want to push success rate with online data."
+    maturity: research
+    verified: 2026-09
+    tags: [rl, post-training, papers]
+  - id: every-embodied
+    name: "datawhalechina/every-embodied"
+    url: "https://github.com/datawhalechina/every-embodied"
+    type: list
+    what: "Chinese, beginner-oriented hands-on curriculum — build an embodied robot from zero, no programming background assumed."
+    why: "The right link for someone starting from nothing. Not for someone already stuck."
+    maturity: production
+    verified: 2026-09
+    tags: [chinese, tutorial, beginner]
+  - id: xbotics-handbook
+    name: "Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook"
+    url: "https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook"
+    type: list
+    what: "Chinese, 21-lecture embodied-AI course."
+    why: "Structured Chinese curriculum covering the theory our docs assume."
+    maturity: production
+    verified: 2026-09
+    tags: [chinese, tutorial]
+  - id: action-diffusion-handbook
+    name: "AlmondGod/action-diffusion-handbook"
+    url: "https://github.com/AlmondGod/action-diffusion-handbook"
+    type: list
+    what: "Handbook focused on action diffusion and diffusion-transformer policies (ACT, Diffusion Policy, RDT-1B and friends)."
+    why: "Complements VLA-Handbook on the action-representation side, which is where most 'it doesn't move' bugs live."
+    maturity: research
+    verified: 2026-09
+    tags: [chinese, handbook, diffusion]
+  - id: dead-fkromer-awesome-ros2
+    name: "fkromer/awesome-ros2 (abandoned)"
+    url: "https://github.com/fkromer/awesome-ros2"
+    type: list
+    what: "2.1k stars. ROS2 ecosystem index."
+    why: "Historically the ROS2 entry point. Useful as an archive; do not expect modern VLA integration guidance."
+    maturity: abandoned
+    verified: 2026-09
+    tags: [ros2, abandoned]
+    notes: "No commits since 2023-08."
+  - id: dead-awesome-il
+    name: "kristery/Awesome-Imitation-Learning (abandoned)"
+    url: "https://github.com/kristery/Awesome-Imitation-Learning"
+    type: list
+    what: "611 stars. Classic imitation-learning index."
+    why: "Background on BC/DAgger lineage. Kept for the record, not recommended as a current reference."
+    maturity: abandoned
+    verified: 2026-09
+    tags: [imitation-learning, abandoned]
+    notes: "No commits since 2023-08."
+  - id: dead-rfm-how-to
+    name: "utn-air/Awesome-Robotics-Foundation-Model-How-To (abandoned)"
+    url: "https://github.com/utn-air/Awesome-Robotics-Foundation-Model-How-To"
+    type: list
+    what: "Aimed at 'Training Pipeline and deployment' plus tools — conceptually the nearest predecessor to this repo."
+    why: "Worth reading as a cautionary example: the right idea, abandoned in 2024 at 7 stars. The lesson is that a list like this only survives if it is generated from data and checked by CI."
+    maturity: abandoned
+    verified: 2026-09
+    tags: [abandoned, prior-art]
+    notes: "No commits since 2024-06."

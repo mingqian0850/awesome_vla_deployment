@@ -1,0 +1,141 @@
+section: "Deployment — inference timing, optimisation, edge, integration"
+order: 40
+description: >
+  The reason this repo exists. Across 36 curated lists in this space,
+  `watchdog|e-stop|deadman|velocity limit` returns roughly zero hits, no list reports which
+  models actually export to ONNX/TensorRT/OpenVINO, and no list publishes measured
+  latency/VRAM/success-rate deltas. This section is the start of that.
+entries:
+  - id: lerobot-inference
+    name: "LeRobot — Policy Deployment (lerobot-rollout)"
+    url: "https://huggingface.co/docs/lerobot/en/inference"
+    type: docs
+    what: >
+      First-party deployment documentation: execution strategies (base/sentry/highlight/
+      DAgger/episodic), Sync vs Real-Time Chunking with `execution_horizon`,
+      `max_guidance_weight` and `prefix_attention_schedule`, cadence reporting, plus
+      `/subtask` and `/autosteer` endpoints for runtime sub-task re-planning.
+    why: >
+      Read this before designing your own inference loop — it already solves the common
+      cases. What it does not cover is the rest of deployment: a keyword scan of the
+      repo's inference and policy docs returns 0 hits for TensorRT, ONNX, quantization,
+      Jetson, and safety/e-stop/watchdog. That gap is what the sections below fill.
+    maturity: production
+    verified: 2026-09
+    license: Apache-2.0
+    tags: [docs, rtc, chunking, async, subtask]
+  - id: rtc
+    name: "Real-Time Execution of Action Chunking Flow Policies (RTC)"
+    url: "https://neurips.cc/virtual/2025/loc/san-diego/poster/117747"
+    type: paper
+    what: "Inference-time method for executing action chunks asynchronously, so the robot does not stall while the next chunk is being denoised."
+    why: >
+      The core reference for the single most common real-robot timing problem. If your
+      policy makes smooth predictions in open loop but stutters on hardware, the cause is
+      usually that inference latency exceeds the chunk's execution time and you are
+      re-planning from a stale observation.
+    maturity: research
+    verified: 2026-09
+    tags: [rtc, latency, chunking, async]
+  - id: vla-rail
+    name: "VLA-RAIL: A Real-Time Asynchronous Inference Linker for VLA Models and Robots"
+    url: "https://arxiv.org/abs/2512.24673"
+    type: paper
+    what: "An asynchronous inference linker that decouples VLA inference from the robot control loop."
+    why: "A concrete design for the inference/control decoupling problem, including how to keep the control loop fed while a chunk is in flight."
+    maturity: research
+    verified: 2026-09
+    tags: [async, latency, architecture]
+  - id: world-action-models-real-time
+    name: "World Action Models in Real Time: An Empirical Study of Smooth Execution via Asynchronous Deployment"
+    url: "https://arxiv.org/abs/2608.01880"
+    type: paper
+    what: "Empirical study of what actually makes asynchronous deployment produce smooth motion."
+    why: "An empirical rather than theoretical treatment — useful when you need to justify an architecture choice rather than a trick."
+    maturity: research
+    verified: 2026-09
+    tags: [async, empirical, smoothness]
+  - id: holobrain-0
+    name: "HoloBrain-0 Technical Report"
+    url: "https://arxiv.org/abs/2602.12062"
+    type: paper
+    what: "Technical report that includes an analysis of the timing defects of synchronous inference executing full action chunks sequentially."
+    why: "A clean statement of the failure mode: with synchronous inference you either block the control loop or act on stale observations, and both show up as degraded task success rather than as an obvious bug."
+    maturity: research
+    verified: 2026-09
+    tags: [sync, latency, analysis]
+  - id: vla-cpp
+    name: "vla.cpp: A Unified Inference Runtime for Vision-Language-Action Models"
+    url: "https://arxiv.org/abs/2606.08094"
+    type: paper
+    what: "A unified inference runtime targeting VLA models specifically."
+    why: "Relevant if you are considering writing your own serving layer — check whether this already covers your model family before doing so."
+    maturity: research
+    verified: 2026-09
+    tags: [runtime, serving]
+  - id: eva-client
+    name: "EVA-Client"
+    url: "https://github.com/Noietch/EVA-CLIENT"
+    type: repo
+    what: "Unified framework for deployment, evaluation and data collection on real robots — one policy, many robots."
+    why: "Directly targets the integration cost that dominates real projects. Its evaluation harness is as interesting as its deployment path, because most labs evaluate ad hoc."
+    maturity: research
+    verified: 2026-09
+    tags: [framework, deployment, evaluation, data-collection]
+  - id: eva-client-paper
+    name: "EVA-Client (paper)"
+    url: "https://arxiv.org/abs/2607.02646"
+    type: paper
+    what: "Paper describing the EVA-Client deployment/evaluation/data-collection framework."
+    why: "Explains the design rationale behind the framework above."
+    maturity: research
+    verified: 2026-09
+    tags: [framework, paper]
+  - id: robot-control-stack
+    name: "robot-control-stack"
+    url: "https://github.com/RobotControlStack/robot-control-stack"
+    type: repo
+    what: "ROS-free sim-to-real deployment stack for learned robot policies."
+    why: "A pragmatic option when ROS2 is more integration overhead than you need for a single-arm manipulation setup. Compare against a ROS2 path before committing either way."
+    maturity: research
+    verified: 2026-09
+    tags: [integration, sim2real, ros-free]
+  - id: minivla
+    name: "MiniVLA"
+    url: "https://github.com/Zhenxintao/MiniVLA"
+    type: repo
+    what: "Compact VLA targeting TensorRT edge deployment."
+    why: "One of the few projects that treats edge export as a first-class goal rather than an afterthought."
+    maturity: toy
+    verified: 2026-09
+    tags: [edge, tensorrt, small-model]
+  - id: embodirun
+    name: "EmbodiRun"
+    url: "https://github.com/BUAA-CI-LAB/EmbodiRun"
+    type: repo
+    what: "Execution runtime for embodied policies."
+    why: "Early-stage, but worth tracking as the runtime layer of this stack matures."
+    maturity: toy
+    verified: 2026-09
+    tags: [runtime]
+  - id: factory-floor-case-study
+    name: "A Factory-Floor Deployment Case Study of VLA Pipelines for Industrial Packaging"
+    url: "https://arxiv.org/abs/2605.27461"
+    type: paper
+    what: "Case study of deploying a VLA pipeline in an actual factory packaging task, written up as workflow, failures and lessons."
+    why: >
+      Rare and valuable: most deployment literature reports successes on lab benches.
+      A documented failure list from a production environment is worth more than ten
+      benchmark tables when you are planning your own rollout.
+    maturity: research
+    verified: 2026-09
+    tags: [deployment, case-study, industrial, failures]
+  - id: pi0-deploy-notes
+    name: "pi0 fine-tuning guide with domestic-arm deployment (Chinese)"
+    url: "https://zeeklog.com/p0de-wei-diao-ru-he-ji-yu-ge-chong-kai-yuan-shu-ju-ji-yi-ji-si-you-shu-ju-ji-wei-diao-openpi-han-wo-si-qi-yue-de-wei-diao-shi-jian-ji-openpizai-guo-chan-bi-shang-de-bu-shu-8"
+    type: blog
+    what: "Chinese write-up of fine-tuning openpi on open and private datasets, then deploying it on a domestic robot arm."
+    why: "Documents the adaptation steps for hardware outside the pretraining distribution — the case where most teams actually get stuck."
+    maturity: research
+    verified: 2026-09
+    tags: [chinese, pi0, deployment, blog]

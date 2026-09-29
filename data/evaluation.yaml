@@ -1,0 +1,50 @@
+section: "Evaluation"
+order: 50
+description: >
+  Most labs evaluate ad hoc, then report point estimates from a handful of trials. These
+  entries are the tools and the protocol material for producing numbers you can act on.
+entries:
+  - id: vla-eval-harness
+    name: "allenai/vla-evaluation-harness"
+    url: "https://github.com/allenai/vla-evaluation-harness"
+    type: repo
+    what: "A unified harness for evaluating VLA models across environments."
+    why: "Reduces the amount of bespoke evaluation plumbing you have to write, which is usually where evaluation rigour is lost."
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, harness]
+  - id: simplerenv
+    name: "SimplerEnv"
+    url: "https://github.com/simpler-env/SimplerEnv"
+    type: repo
+    what: "Simulated environments designed to correlate with real-robot performance for manipulation policies."
+    why: >
+      Useful as a cheap screening filter between training runs so you do not spend robot time
+      on obviously bad checkpoints. Treat it as a screen, not as evidence of deployment
+      readiness — the visual and contact fidelity gaps that matter on hardware are exactly
+      what a simulator tends to miss.
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, simulation, benchmark]
+  - id: robocasa
+    name: "RoboCasa"
+    url: "https://github.com/robocasa/robocasa"
+    type: repo
+    what: "Large-scale simulation benchmark for everyday manipulation tasks in kitchen environments."
+    why: "Broad task coverage for pre-deployment sanity checks and for generating targeted recovery data."
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, simulation, benchmark]
+  - id: robomimic-study
+    name: "What Matters in Learning from Offline Human Demonstrations"
+    url: "https://github.com/ARISE-Initiative/robomimic"
+    type: paper
+    what: >
+      Systematic study of which factors actually drive offline imitation-learning performance:
+      number and quality of demonstrations, observation space, and algorithm choice.
+    why: >
+      The most useful single reference when someone proposes 'collect more data' as the
+      solution. Read the ablations before you commit weeks of robot time.
+    maturity: production
+    verified: 2026-09
+    tags: [evaluation, data-quality, study]
