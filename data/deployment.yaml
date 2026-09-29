@@ -139,3 +139,113 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [chinese, pi0, deployment, blog]
+  - id: lerobot-rtc-docs
+    name: "LeRobot — Real-Time Chunking reference"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/rtc.mdx"
+    type: docs
+    what: >
+      The configuration surface for RTC: `execution_horizon`, `max_guidance_weight`,
+      `prefix_attention_schedule`, and `inference_delay`.
+    why: >
+      Read this to learn what the parameters mean — and note the documented limitation: the
+      docs state that `inference_delay` "should be calculated based on the inference latency of
+      the policy" and do not tell you how. Measuring that number is the single highest-value
+      hour you can spend before enabling RTC, and the how is in
+      docs/41-real-time-inference.md.
+    maturity: production
+    verified: 2026-09
+    tags: [rtc, chunking, config, inference-delay]
+  - id: lerobot-async
+    name: "LeRobot — asynchronous inference (policy server / robot client)"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/async.mdx"
+    type: docs
+    what: "Reference implementation of the decoupled architecture: a policy server that runs inference continuously and a robot client that consumes chunks as they arrive."
+    why: >
+      The cleanest existing template for the two-clock design in docs/41. Worth reading for the
+      queue-merge policy alone, because that is where the subtle bugs live — whether to drop or
+      blend a late chunk, and what the client does when the server goes quiet.
+    maturity: production
+    verified: 2026-09
+    tags: [async, architecture, queue, reference]
+  - id: lerobot-rollout
+    name: "LeRobot — rollout strategies and fleet operations"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx"
+    type: docs
+    what: >
+      A single CLI exposing `base`, `sentry`, `highlight`, `episodic` and `dagger` execution
+      strategies — autonomous runs, continuous fleet recording with Hub upload, a ring-buffer
+      "save the last 30 seconds" incident capture, and human takeover with pedal input.
+    why: >
+      The closest thing to a shipped operations control loop in a mainstream framework, and the
+      most under-appreciated document in this stack. Most teams build incident capture from
+      scratch, badly. If you adopt one thing from this repo, adopt the ring-buffer capture —
+      the episodes where the policy fails are exactly the data you need, and they are the ones
+      you will not think to record.
+    maturity: production
+    verified: 2026-09
+    tags: [operations, rollout, dagger, hil, incident-capture]
+  - id: lerobot-hil
+    name: "LeRobot — human-in-the-loop data collection"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/hil_data_collection.mdx"
+    type: docs
+    what: "Framework support for intervening during a rollout to collect correction data."
+    why: >
+      The practical route to the recovery data that long-horizon policies need. Correction data
+      from the policy's own failure states is the one thing that addresses covariate shift, and
+      having it built into the rollout loop is what makes it actually happen rather than being
+      planned and never collected.
+    maturity: production
+    verified: 2026-09
+    tags: [hil, corrections, dagger, recovery-data]
+  - id: ros2-control-trajectory
+    name: "ros2_control — joint_trajectory_controller"
+    url: "https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html"
+    type: docs
+    what: "Spline interpolation (cubic/quintic) between trajectory points, at a configurable rate, with velocity and acceleration limits."
+    why: >
+      This is where chunk interpolation actually lives, and it is the answer to a question most
+      VLA write-ups skip entirely: a policy emits 10-50 discrete setpoints, but the servos want a
+      continuous command. Push chunks here rather than commanding setpoints directly at the
+      policy's rate. Choose the spline order deliberately — and note that interpolation also
+      *hides* policy error, which is a feature until you are debugging.
+    maturity: production
+    verified: 2026-09
+    tags: [ros2, interpolation, trajectory, limits]
+  - id: ros2-control-admittance
+    name: "ros2_control — admittance_controller"
+    url: "https://control.ros.org/rolling/doc/ros2_controllers/admittance_controller/doc/userdoc.html"
+    type: docs
+    what: "Force/compliance control that lets an external force deviate from the commanded trajectory."
+    why: >
+      The controller-layer answer to contact-rich tasks that a position-controlled learned policy
+      cannot handle on its own. A policy trained on position trajectories will fight the
+      environment; an admittance layer absorbs that. Worth knowing it exists before you conclude
+      your policy needs to learn compliance.
+    maturity: production
+    verified: 2026-09
+    tags: [ros2, compliance, contact, force]
+  - id: ros2-control-gripper
+    name: "ros2_control — parallel_gripper_controller"
+    url: "https://control.ros.org/jazzy/doc/ros2_controllers/parallel_gripper_controller/doc/userdoc.html"
+    type: docs
+    what: "Standard gripper command interface for parallel grippers."
+    why: >
+      Relevant to the gripper action-representation problem: normalised 0-1 versus metres versus
+      effort is decided per project with no consensus, which is why gripper conventions are a
+      recurring source of porting bugs. This gives you the controller-side interface to map onto.
+    maturity: production
+    verified: 2026-09
+    tags: [ros2, gripper, interface]
+  - id: neural-controller
+    name: "G-Levine/neural_controller"
+    url: "https://github.com/G-Levine/neural_controller"
+    type: repo
+    what: "Runs a learned policy as a ros2_control controller, alongside other controllers in the same controller manager."
+    why: >
+      One of only two good open-source bridges between a learned policy and a real-time control
+      framework. The architectural advantage is real: the policy becomes a peer of the
+      trajectory controller rather than an external process racing it, which removes a whole
+      class of timing bugs.
+    maturity: research
+    verified: 2026-09
+    tags: [ros2, integration, real-time, bridge]

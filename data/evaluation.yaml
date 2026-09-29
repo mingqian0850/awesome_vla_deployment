@@ -48,3 +48,39 @@ entries:
     maturity: production
     verified: 2026-09
     tags: [evaluation, data-quality, study]
+  - id: eval-statistical-bounds
+    name: "Statistical lower bounds on behavior-cloning success probability"
+    url: "https://arxiv.org/abs/2405.05439"
+    type: paper
+    what: "Derives statistically valid lower bounds on true success probability from a small number of trials (roughly 20-100)."
+    why: >
+      Turns "we got 7 out of 10" into a defensible statement. Most real-robot evaluations in this
+      field report point estimates from trial counts that cannot support the comparisons being
+      drawn, and this gives you the bound instead.
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, statistics, confidence, trials]
+  - id: eval-stopping-rules
+    name: "Sequential / anytime-valid stopping rules for robot evaluation"
+    url: "https://arxiv.org/abs/2605.29710"
+    type: paper
+    what: "States outright that N <= 25 without confidence intervals cannot resolve close comparisons, and provides sequential testing so you can stop as soon as the answer is determined."
+    why: >
+      Answers the question every evaluation actually faces: when am I allowed to stop running
+      trials. Anytime-valid stopping means you do not have to pre-commit to a fixed trial count
+      and waste robot time when the difference is already unambiguous.
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, statistics, stopping, trials]
+  - id: eval-optimal-stopping
+    name: "Near-optimal stopping in the 10-50 trial regime"
+    url: "https://arxiv.org/abs/2503.10966"
+    type: paper
+    what: "Studies evaluation stopping specifically in the trial-count regime that real-robot manipulation work actually operates in."
+    why: >
+      The 10-50 trial regime is where almost all published robot evaluations live, and it is
+      precisely where naive statistics break down. This is the closest thing to a protocol for
+      the situation you are actually in.
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, statistics, small-sample, trials]

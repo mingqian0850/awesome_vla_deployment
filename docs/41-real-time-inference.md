@@ -23,7 +23,35 @@ image transfer, preprocessing, tokenisation, denoising steps, and the trip back 
 actuator. Teams routinely quote the denoising loop alone and then wonder why the robot is
 sluggish.
 
-## 2. The feasibility condition
+## 2. What `L` actually is, on real hardware
+
+Before you measure your own, calibrate your expectations. These are reported figures, not a
+controlled comparison — different harnesses, camera counts and denoising steps make most
+cross-source VLA latency numbers non-comparable, and FlashRT's own benchmark table says so
+explicitly. Treat the *order of magnitude* as the signal.
+
+| Setup | Reported latency | Source |
+|---|---|---|
+| π0.5, upstream openpi, Jetson Thor | 714 ms | [FlashRT benchmark table](https://github.com/flashrt-project/FlashRT/blob/main/docs/benchmark_comparison.md) |
+| π0.5, upstream openpi, RTX 5090 | 244 ms | same |
+| π0.5, Jetson AI Lab BF16 → TensorRT FP8, Thor | 163 ms → **95 ms** | same |
+| π0.5, FlashRT engine | **51.51 ms** (13.9×) | same |
+| π0.5, AGX Thor | 44 ms (23 Hz) | [NVIDIA dev forum](https://forums.developer.nvidia.com/t/real-time-inference-on-thor-rtx-pi0-5-gr00t-n1-6-1-7-thor-23-hz-rtx-5090-50-80hz/368788) |
+| π0.5, RTX 5090 | 17.58 ms (57 Hz) | same |
+| GR00T N1.6, TensorRT, Orin → 4090 → H100 | 173 → 43 → 36 ms | [GR00T optimisation docs](https://nvidia-isaac-gr00t.mintlify.app/deployment/optimization) |
+
+Three things follow, and they are worth more than the individual numbers:
+
+1. **The same model spans 714 ms to 51 ms.** The dominant variable is the inference stack, not
+   the model and not the task. If your latency looks like the top row, the answer is the
+   runtime, not a smaller checkpoint.
+2. **23 Hz on Thor means a 50 Hz control loop cannot be fed synchronously.** Chunking or
+   asynchronous execution is not an optimisation at that point; it is the only way the
+   architecture works.
+3. **On Jetson Orin, no stack in the vendor table gets below 173 ms.** The hardware is the
+   binding constraint before your code is. Decide that before you spend a month profiling.
+
+## 3. The feasibility condition
 
 > **You can re-plan before the buffer empties iff `L < D_c`.**
 
@@ -35,7 +63,7 @@ policy will help.
 The margin is also your robustness budget. Wi-Fi jitter, a thermal-throttled GPU, or one slow
 frame can consume it. **Aim for `L < D_c / 3` unless you have a specific reason not to.**
 
-## 3. The observation-age equation — the part people miss
+## 4. The observation-age equation — the part people miss
 
 Chunk k is computed from an observation taken at time `t_0`, but action `k` is executed at
 `t_0 + L + k·T_c`. So:
@@ -57,7 +85,7 @@ fix: it improves the feasibility margin from §2 while making the staleness wors
 pressures pull in opposite directions, and the correct `H` is where they balance — which
 depends on how fast your task evolves, not on a default from a config file.
 
-## 4. Three execution strategies
+## 5. Three execution strategies
 
 ### Synchronous (execute the whole chunk, then re-plan)
 
@@ -89,7 +117,7 @@ depends on how fast your task evolves, not on a default from a config file.
 - **Costs**: genuine added complexity — you now have two clocks, a buffer, and a policy
   question about what to do when inference overruns. Budget for it.
 
-## 5. Measure it properly
+## 6. Measure it properly
 
 Instrument five timestamps on every cycle and log them as a series:
 
@@ -108,7 +136,7 @@ Then compute, for every cycle: the feasibility margin `D_c − L`, and the age o
 executed action. If either crosses a threshold, the problem is the timing architecture, not
 the model.
 
-## 6. Pitfalls that show up as "the model is bad"
+## 7. Pitfalls that show up as "the model is bad"
 
 - **Queueing observations.** If the policy lags and you enqueue frames, you build a backlog and
   the robot acts on ever-older data, then behaves as if it is lagging the world by seconds.
@@ -127,7 +155,7 @@ the model.
   second-old plans, no amount of data fixes it. Fix the architecture first, then evaluate the
   model on its own merits.
 
-## 7. Quick reference
+## 8. Quick reference
 
 ```
 Feasibility:        L  <  D_c / 3          (D_c = H / f_c)

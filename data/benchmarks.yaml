@@ -1,106 +1,234 @@
 section: "Deployment benchmarks — measured, not cited"
 order: 45
 description: >
-  Entries with `type: gap` are deliberate: they mark measurements that no public source
-  publishes, in a structured place where a contributor can fill them in. Writing down that a
-  number does not exist is more useful than writing down a number that might not be true.
+  Latency and quantisation numbers that named hardware actually produced. Every figure here
+  was traced to a source that reports it, and every URL is machine-checked.
 
-  The protocol for producing each of these is in docs/40-optimization-matrix.md.
+  **Read the comparability warning before using any row.** Different harnesses, camera
+  counts, denoising step counts and warm-up paths make most cross-source VLA latency
+  comparisons invalid. FlashRT's own benchmark table carries this warning explicitly, and it
+  applies to NVIDIA's published numbers too.
+
+  Entries with `type: gap` are measurements that still do not exist publicly. Writing that
+  down is more useful than inventing a number.
 entries:
-  - id: vram-requirements
-    name: "VRAM and hardware requirements (published)"
-    url: "https://github.com/Physical-Intelligence/openpi"
-    type: docs
+  - id: flashrt-benchmark-table
+    name: "FlashRT — cross-source latency table (π0.5, GR00T N1.6)"
+    url: "https://github.com/flashrt-project/FlashRT/blob/main/docs/benchmark_comparison.md"
+    type: benchmark
     what: >
-      The one part of this matrix that IS published: openpi's README states inference > 8 GB,
-      LoRA fine-tuning > 22.5 GB (both RTX 4090), full fine-tuning > 70 GB (A100 80GB / H100),
-      with multi-GPU via `fsdp_devices` supported and multi-node unsupported.
+      The only place found that tabulates *competing* published numbers side by side, with an
+      explicit "only compare matching rows" warning. Reported rows: upstream openpi 714 ms on
+      Jetson Thor and 244 ms on RTX 5090; Jetson AI Lab BF16 163 ms improving to TensorRT FP8
+      95 ms on Thor; FlashRT 51.51 ms (13.9x). Also a worked example of honest reporting that
+      separates cold init (6.18 s), first inference (1.07 s) and steady state (18.39 ms p50).
     why: >
-      Settles the hardware question for the training side. It does not answer the deployment
-      question, which is what the `gap` entries below are about.
+      Resolves the question the feasibility arithmetic in docs/41-real-time-inference.md
+      depends on: is the model fast enough for your control rate on the hardware you own.
+      The ordering of magnitude — 714 ms down to 51 ms for the same model class — is the
+      single most useful fact in this section, because it says the answer is mostly about
+      the inference stack, not the model.
+    maturity: research
+    verified: 2026-09
+    tags: [latency, benchmark, pi05, groot, jetson]
+    notes: >
+      FlashRT's README warns against comparing its RTX 4090 numbers with RTX 5090 or TensorRT
+      rows. Heed that: the table is a map of what has been reported, not a controlled
+      comparison.
+  - id: flashrt
+    name: "FlashRT — small-batch realtime inference engine"
+    url: "https://github.com/flashrt-project/FlashRT"
+    type: repo
+    what: "Hand-written CUDA inference engine for latency-critical VLA at small batch (π0, π0.5, GR00T N1.6, π0-FAST)."
+    why: >
+      Small batch is exactly the VLA regime that large-batch-optimised serving stacks
+      underserve — you infer for one robot, not a request queue. If your latency numbers look
+      like the 714 ms row rather than the 51 ms row, the difference is the inference stack.
+    maturity: research
+    verified: 2026-09
+    tags: [inference-engine, cuda, latency, pi05, groot]
+  - id: nvidia-forum-thor-rtx
+    name: "NVIDIA Developer Forum — real measured π0.5 / GR00T latency on Thor and RTX 5090"
+    url: "https://forums.developer.nvidia.com/t/real-time-inference-on-thor-rtx-pi0-5-gr00t-n1-6-1-7-thor-23-hz-rtx-5090-50-80hz/368788"
+    type: discussion
+    what: >
+      Developer thread with measured numbers: π0.5 44 ms (23 Hz) on AGX Thor and 17.58 ms
+      (57 Hz) on RTX 5090; GR00T N1.6 45 ms / 13.08 ms; π0-FAST 8.1 ms per token on Thor
+      versus 2.39 ms per token on 5090. An NVIDIA staff reply links the official TensorRT NVFP4
+      tutorial.
+    why: >
+      The best single primary source of real π0.5 and GR00T latency on shipping hardware. It
+      also gives you the number that decides a robot's architecture: 23 Hz on Thor means a
+      50 Hz control loop cannot be fed synchronously from the policy, so you need chunking or
+      async execution regardless of anything else.
     maturity: production
     verified: 2026-09
-    tags: [vram, hardware, published]
-  - id: gap-latency
-    name: "GAP — end-to-end inference latency per model per hardware"
-    url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
-    type: gap
+    tags: [latency, jetson-thor, rtx5090, pi05, groot, measured]
+  - id: groot-optimization-docs
+    name: "Isaac GR00T — official deployment optimisation numbers"
+    url: "https://nvidia-isaac-gr00t.mintlify.app/deployment/optimization"
+    type: docs
     what: >
-      Not published anywhere found. What is missing: observation-captured to chunk-returned
-      latency, at p50/p95/p99, for pi0.5 / pi0 / GR00T N1.5 / OpenVLA / RDT-1B on Jetson Orin,
-      Jetson Thor, RTX 4090 and A100.
+      Vendor-published latencies for GR00T N1.6 across three regimes per GPU
+      (PyTorch eager / torch.compile / TensorRT, ms): RTX 5090 58/37/31, H100 77/38/36,
+      RTX 4090 82/44/43, Jetson Thor 117/105/92, Jetson Orin 300/199/173.
     why: >
-      This single table would resolve more real deployments than any paper in this repo. The
-      feasibility arithmetic in docs/41-real-time-inference.md needs exactly two numbers —
-      `L` and `D_c` — and only one of them is easy to find. Without `L` you cannot tell
-      whether your control rate is achievable until you have the hardware in hand.
-    maturity: toy
+      Answers "what does torch.compile and TensorRT actually buy me, on which GPU" for a named
+      model, from the vendor. Two things stand out: the compile win is large on GPUs and small
+      on Thor (117 to 105 ms), and on Orin no stack gets you under 173 ms — which rules out
+      synchronous 20 Hz control on that part and tells you the hardware is the constraint
+      before you start optimising code.
+    maturity: production
     verified: 2026-09
-    tags: [gap, latency, wanted, benchmark]
+    tags: [latency, tensorrt, torch-compile, jetson, orin, groot, measured]
+  - id: embodied-efficiency
+    name: "embodied-efficiency — the negative result that saves weeks"
+    url: "https://github.com/LaelaZorana/embodied-efficiency"
+    type: benchmark
+    what: >
+      Four experiments on VLA inference optimisation. Finds CUDA graphs give ~5.9x, while
+      weight-only INT8/INT4 quantisation (hand kernel, tensor-core rewrite, size sweep,
+      torchao/Marlin) is **1.2-1.6x SLOWER than bf16 at batch 1**. Also makes the
+      latency-versus-staleness trade explicit: bf16 plus CUDA graph costs 4.47 ms per action,
+      while executing a whole 50-action chunk amortises to 0.089 ms per action but leaves the
+      last action 49 control steps stale.
+    why: >
+      The most valuable single result in this file. The default assumption — that low-bit
+      quantisation buys latency — is wrong for a VLA sampler at batch 1, where it is a
+      *memory footprint* lever only. Teams that skip this experiment spend weeks quantising,
+      break their policy's action fidelity, and get slower inference. Read it before writing
+      any quantisation code.
+    maturity: research
+    verified: 2026-09
+    tags: [quantization, negative-result, cuda-graphs, latency, batch1]
     notes: >
-      To contribute: report p50/p95/p99 (not the mean), the exact batch size and action horizon,
-      the denoising step count, the dtype, and whether the timing includes camera capture and
-      image preprocessing. Timings that exclude preprocessing are the most common source of
-      disagreement between reports.
-  - id: gap-quantization
-    name: "GAP — what quantization does to task success rate"
+      The 0.089 ms/action figure is the honest statement of what open-loop chunk execution
+      buys: it is not that inference got cheaper, it is that you stopped paying for it per
+      step and accepted staleness instead. See docs/41-real-time-inference.md.
+  - id: jetson-pi
+    name: "Jetson-PI — onboard async VLA inference"
+    url: "https://github.com/PKU-SEC-Lab/Jetson-PI"
+    type: repo
+    what: "Open-sourced asynchronous VLA inference running onboard a Jetson, reporting roughly an 8.66x improvement in effective control frequency on Orin."
+    why: >
+      The concrete answer to the most common hardware complaint in this space — "the policy
+      runs at 5 Hz and the arm wants 50 Hz". Rather than waiting for a faster model, it
+      decouples inference rate from control rate, which is the same conclusion RTC reaches
+      from the algorithmic side.
+    maturity: research
+    verified: 2026-09
+    tags: [async, jetson, orin, control-frequency]
+  - id: xpu-characterization
+    name: "Characterizing VLA Models across XPUs"
+    url: "https://arxiv.org/abs/2604.24447"
+    type: paper
+    what: >
+      Per-stage timing (ViT / LLM prefix / action expert) for VLA models across GPUs and edge
+      parts, including context caching gains of 1.25x on RTX 4090 and 1.22x on Jetson Thor.
+    why: >
+      The best hardware-heterogeneity study available: it tells you which stage dominates on
+      which part, so you optimise the thing that is actually slow on your device instead of the
+      thing that was slow on the authors' device. Stage breakdowns are also what you need to
+      decide between caching, pruning, and a smaller encoder.
+    maturity: research
+    verified: 2026-09
+    tags: [profiling, per-stage, xpu, context-cache, measured]
+  - id: foldquantvla
+    name: "FoldQuantVLA — native low-bit quantisation for VLAs"
+    url: "https://arxiv.org/abs/2609.24433"
+    type: paper
+    what: "Low-bit quantisation designed around VLA internals (consistent folding) rather than a ported LLM recipe."
+    why: >
+      Complements the negative result above: if naive LLM quantisation fails on a VLA, this is
+      the attempt to identify why and fix it, rather than concluding quantisation is useless
+      for policies.
+    maturity: research
+    verified: 2026-09
+    tags: [quantization, low-bit, paper]
+  - id: open-loop-revisited
+    name: "Revisiting Open-Loop Execution in Robotics"
+    url: "https://arxiv.org/abs/2608.15938"
+    type: paper
+    what: "Argues the field over-corrected toward reactivity and quantifies what open-loop execution actually buys and costs."
+    why: >
+      The counterweight to "always re-plan as fast as possible". Directly relevant when your
+      asynchronous loop performs *worse* than plain open-loop chunk execution — which happens,
+      and which the reactivity narrative does not predict.
+    maturity: research
+    verified: 2026-09
+    tags: [open-loop, reactivity, chunking]
+  - id: ros2-wireless
+    name: "Optimizing ROS 2 Communication for Wireless Robotic Systems"
+    url: "https://arxiv.org/abs/2508.11366"
+    type: paper
+    what: "Empirical study of ROS 2 throughput and latency over wireless links, including back-pressure when the offered rate exceeds link throughput, plus released DDS configuration tooling."
+    why: >
+      The clearest published data on ROS 2-over-WiFi failure modes, and the explanation for the
+      most confusing class of deployment bug: everything is smooth on Ethernet and drops frames
+      on WiFi.
+    maturity: research
+    verified: 2026-09
+    tags: [ros2, dds, wireless, latency]
+  - id: gap-latency-budget-worksheet
+    name: "GAP — a filled-in end-to-end latency budget"
     url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
     type: gap
     what: >
-      Not published anywhere found. Missing: success rate before and after INT8 / FP8 / INT4 /
-      GPTQ / AWQ, per model, with the latency gained and the trial count.
+      Still not published. The numbers above give you the model stage, but nobody publishes a
+      complete budget: camera exposure, transport, host capture, resize and uint8 conversion,
+      network RTT, preprocessing, ViT, LLM prefix, K denoising steps, postprocessing, queue
+      merge, bus latency, servo/IK, actuator settling.
     why: >
-      Quantization papers report perplexity and latency, which are proxies. For a policy, the
-      only number that matters is whether the task still succeeds. Negative results are
-      especially valuable here: "INT8 broke this policy because the action head's outputs are
-      small-magnitude deltas and quantisation noise dominated them" is a finding that would
-      save several teams a week each.
+      Both RTC's `inference_delay` and LeRobot's chunk thresholds *require* a per-step delay
+      estimate, and both sets of docs tell you to compute it without telling you how. A worked
+      example on one popular stack (π0.5, three cameras, SO-101 or UR5e) would immediately
+      become the reference this field lacks. Partial ingredients exist: Jetson-PI's per-module
+      table and FlashRT's separated harness numbers.
     maturity: toy
     verified: 2026-09
-    tags: [gap, quantization, wanted, benchmark]
-  - id: gap-export
-    name: "GAP — which models actually export to ONNX / TensorRT / OpenVINO"
+    tags: [gap, latency, budget, wanted]
+  - id: gap-checkpoint-provenance
+    name: "GAP — checkpoint to calibration/config provenance"
     url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
     type: gap
     what: >
-      Not published anywhere found. Missing: a per-model yes/no on whether a working export
-      exists, which operator or dynamic-shape construct blocked it, and what the exported
-      graph's latency was.
+      Still not published as tooling. Nothing records "this checkpoint was validated against
+      this URDF, these camera intrinsics and extrinsics, and this safety-config revision".
+      Experiment trackers follow weights, not the robot's physical configuration.
     why: >
-      Existing "efficient VLA" sections in other lists are paper tables, so a reader cannot
-      tell whether an export path exists for their model or whether it is a research proposal.
-      A table of attempted exports — including the failures and the specific blocker — is
-      immediately actionable.
+      The most consequential missing piece for reproducibility, and calibration drift is
+      documented and real. Without it, "the model that worked last month" is unfalsifiable.
+      `templates/deployment-manifest.yaml` in this repo is a starting point, not a solution.
     maturity: toy
     verified: 2026-09
-    tags: [gap, onnx, tensorrt, openvino, wanted]
-  - id: gap-rtc-comparison
-    name: "GAP — sync vs temporal ensembling vs RTC on the same task"
+    tags: [gap, provenance, calibration, reproducibility, wanted]
+  - id: gap-onnx-export
+    name: "GAP — a supported export path with an action-parity check"
     url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
     type: gap
     what: >
-      Not published anywhere found. Missing: success rate and motion smoothness for the three
-      execution strategies on one task, one checkpoint and one robot, with the inference
-      latency reported.
+      Still open. ONNX/TensorRT export is a feature request rather than a supported path in the
+      mainstream framework, and recipes live in third-party forks.
     why: >
-      The three strategies are universally discussed and never compared under controlled
-      conditions. Without this, choosing between them is guesswork, and the choice is usually
-      made by whichever one the codebase happens to implement.
+      What is missing is not just the export but the **action-parity harness**: after exporting,
+      compare action chunks against the reference implementation on a fixed batch of
+      observations, and report max absolute deviation. Without that check, an export that
+      silently degrades the policy looks like a policy regression.
     maturity: toy
     verified: 2026-09
-    tags: [gap, rtc, ensembling, wanted, benchmark]
-  - id: gap-safety-overhead
-    name: "GAP — what the safety layer costs"
+    tags: [gap, onnx, tensorrt, export, parity, wanted]
+  - id: gap-network-stall
+    name: "GAP — what the robot does during a network stall"
     url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
     type: gap
     what: >
-      Not published anywhere found. Missing: the added latency and the achievable control rate
-      once an independent limiter, heartbeat and stale-observation guard are in the loop.
+      Still not published. Many papers assume an edge/cloud split; almost none publish jitter
+      distributions, dropped-frame rates, reconnect behaviour, or the behaviour of the robot
+      during a two-second network stall mid-chunk.
     why: >
-      Teams skip the safety layer partly because nobody has quantified its cost. If the honest
-      answer is "0.3 ms and 2% of a core", that removes the main practical objection to
-      building it — and the layer in docs/43-safety.md is the most valuable unclaimed part of
-      this whole field.
+      This is a safety question disguised as a networking question. The answer should be a
+      defined behaviour (decelerate to a stop along a safe path), and right now it is usually
+      whatever the framework happens to do, which is often "keep executing the stale chunk".
     maturity: toy
     verified: 2026-09
-    tags: [gap, safety, latency, wanted]
+    tags: [gap, network, safety, stall, wanted]

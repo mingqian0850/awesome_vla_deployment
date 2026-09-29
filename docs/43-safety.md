@@ -11,6 +11,33 @@
 
 ---
 
+## 0. What exists, and what does not
+
+We looked for a reference implementation of the thing this page describes. The result is
+worth stating plainly, because it is the reason this page is written rather than linked:
+
+| Exists | Does not exist |
+|---|---|
+| [NVIDIA Halos](https://developer.nvidia.com/blog/inside-nvidia-halos-for-robotics-a-full-stack-functional-safety-system-for-physical-ai/) — a full-stack functional-safety **architecture** for physical AI | A reference watchdog / deadman / slew-rate limiter wrapping a **learned policy** |
+| ISO/IEC TR 5469 — **informative** guidance on AI functional safety | Any published **certified** example of a learned policy inside a PLd / SIL2 safety function |
+| `ros2_control` mock components — test controller plumbing | A standard "action is too old → stop" contract. Neither ROS 2 nor `ros2_control` defines one |
+| Generic ROS 2 heartbeat patterns | A measured limit/OOD supervisor around a VLA. The only quantified one found reports AUC 0.99 on drift and 91% of faults caught at 1% false positives |
+
+So: the standards exist, the safety architecture exists, and the **software you would actually
+write** does not. The rest of this page is that software, specified.
+
+Two consequences worth internalising:
+
+- **Nobody publishes this as a repo.** LeRobot and openpi contain no safety layer at all —
+  a grep for watchdog, e-stop or velocity limiting returns nothing. If you deploy either
+  framework as shipped, you have no independent stop path.
+- **The missing "stale action" contract is a real bug class.** With no convention for what to
+  do when a chunk expires, the default behaviour is whatever the framework does, which is
+  frequently "keep executing the stale chunk". That is a safety-relevant default chosen by
+  nobody.
+
+---
+
 ## 1. The core claim: your policy is not a safety system
 
 A learned policy **cannot** be a safety function in the sense the standards use the term.
