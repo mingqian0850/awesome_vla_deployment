@@ -94,3 +94,18 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [evaluation, statistics, small-sample, trials]
+  - id: libero-reproduction-gap
+    name: "A 25x gap between how LIBERO is evaluated in papers and its default config"
+    url: "https://arxiv.org/abs/2506.01844"
+    type: paper
+    what: >
+      Papers reporting LIBERO results commonly run 500 trials per suite across 3 seeds. LIBERO's
+      own default configuration ships `n_eval: 20`.
+    why: >
+      If you reproduce a published number with the default settings and get something worse, this
+      is a plausible reason before your training recipe is. It is also the clearest illustration
+      of why an evaluation protocol has to be reported rather than assumed: the same benchmark,
+      the same checkpoint, and a 25x difference in evidence.
+    maturity: research
+    verified: 2026-09
+    tags: [libero, evaluation, reproduction, protocol, trials]

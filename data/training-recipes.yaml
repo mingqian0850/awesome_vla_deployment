@@ -249,3 +249,38 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [pi05, config-drift, libero, debugging]
+  - id: checkpoint-selection
+    name: "How people actually decide a fine-tune is done"
+    url: "https://github.com/Physical-Intelligence/openpi"
+    type: discussion
+    what: >
+      Collected protocols, each read from its own source rather than recalled: OpenVLA-OFT uses
+      an L1 action error threshold of about 0.01 with a plateau, evaluating every 50k steps —
+      with the reported exception that on LIBERO-Goal, 50k steps beat 150k. GR00T reports
+      open-loop MSE falling 87.5 → 25.4 → 13.2 → 10.0 at 500 / 1000 / 1500 / 2000 steps with no
+      published target MSE. RDT-1B tracks `overall_avg_sample_mse`. LeRobot guidance is 5-10
+      epochs. openpi recipes use fixed step budgets.
+    why: >
+      Nobody publishes a criterion, only conventions — and the LIBERO-Goal exception matters
+      because it means "train longer" is not reliably better. The useful move is to write your
+      own stopping rule down before you start, because the alternative is choosing the checkpoint
+      whose number you liked, which is how a fine-tune's reported success rate becomes
+      unreproducible.
+    maturity: research
+    verified: 2026-09
+    tags: [checkpoint, stopping-rule, training-length, protocol]
+  - id: evaluation-noise-floor
+    name: "Run-to-run noise floors you should measure before comparing anything"
+    url: "https://github.com/NVIDIA/Isaac-GR00T"
+    type: discussion
+    what: >
+      Reported noise levels: GR00T shows roughly 5-6% run-to-run variation, and about ±5%
+      sampling noise at 100 episodes.
+    why: >
+      A five-point noise floor means a five-point improvement is not a result. Measure your own
+      floor by running the identical configuration twice before you compare two configurations —
+      it is one of the cheapest experiments available and it prevents most of the false
+      conclusions in this space.
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, noise, reproducibility, statistics]

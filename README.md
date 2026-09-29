@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-138 entries · 54 production · 72 research · 8 toy · 4 abandoned
+141 entries · 54 production · 75 research · 8 toy · 4 abandoned
 
 </div>
 
@@ -124,6 +124,7 @@ The hand-written pages, where the parts that no link can give you live:
   - [The policy behaves as if your configuration changes had no effect.](#the-policy-behaves-as-if-your-configuration-changes-had-no-effect)
   - [Training runs and loss decreases, but the policy behaves as if the data ](#training-runs-and-loss-decreases-but-the-policy-behaves-as-if-the-data-were-never-normalized--or-normalization-appears-to-do-nothing-at-all)
   - [Fine-tuning runs to completion and the loss decreases normally, but succ](#fine-tuning-runs-to-completion-and-the-loss-decreases-normally-but-success-rate-is-at-or-near-zero)
+  - [Training collapses, produces NaNs, or the loss is orders of magnitude wr](#training-collapses-produces-nans-or-the-loss-is-orders-of-magnitude-wrong--with-no-obvious-change-to-the-data)
 
 ## Landscape — what already exists
 
@@ -361,6 +362,12 @@ Every figure here is quoted from a primary source that was fetched and read, not
 - **[pi0.5 at 1% on LIBERO: config drift, not the model](https://github.com/Physical-Intelligence/openpi/issues/711)** — `discussion` · `research` · verified 2026-09 · #pi05 #config-drift #libero #debugging
   - *What it is:* Reported case of pi0.5 scoring about 1 % on LIBERO against a much higher paper number. The diagnosis was configuration drift: LoRA, `discrete_state_input=False`, a non-standard action horizon, and hand-computed statistics that differed from the checkpoint's — plus ad-hoc learning-rate modifications.
   - *Why it matters here:* The recommended remedy generalises to every fine-tune in this space: use the shipped config verbatim first, confirm it reproduces, then change exactly one thing at a time. And diff your own `TrainConfig` field by field against the reference config rather than assuming your CLI flags produced the config you intended.
+- **[How people actually decide a fine-tune is done](https://github.com/Physical-Intelligence/openpi)** — `discussion` · `research` · verified 2026-09 · #checkpoint #stopping-rule #training-length #protocol
+  - *What it is:* Collected protocols, each read from its own source rather than recalled: OpenVLA-OFT uses an L1 action error threshold of about 0.01 with a plateau, evaluating every 50k steps — with the reported exception that on LIBERO-Goal, 50k steps beat 150k. GR00T reports open-loop MSE falling 87.5 → 25.4 → 13.2 → 10.0 at 500 / 1000 / 1500 / 2000 steps with no published target MSE. RDT-1B tracks `overall_avg_sample_mse`. LeRobot guidance is 5-10 epochs. openpi recipes use fixed step budgets.
+  - *Why it matters here:* Nobody publishes a criterion, only conventions — and the LIBERO-Goal exception matters because it means "train longer" is not reliably better. The useful move is to write your own stopping rule down before you start, because the alternative is choosing the checkpoint whose number you liked, which is how a fine-tune's reported success rate becomes unreproducible.
+- **[Run-to-run noise floors you should measure before comparing anything](https://github.com/NVIDIA/Isaac-GR00T)** — `discussion` · `research` · verified 2026-09 · #evaluation #noise #reproducibility #statistics
+  - *What it is:* Reported noise levels: GR00T shows roughly 5-6% run-to-run variation, and about ±5% sampling noise at 100 episodes.
+  - *Why it matters here:* A five-point noise floor means a five-point improvement is not a result. Measure your own floor by running the identical configuration twice before you compare two configurations — it is one of the cheapest experiments available and it prevents most of the false conclusions in this space.
 
 
 ## Deployment — inference timing, optimisation, edge, integration
@@ -574,6 +581,9 @@ Most labs evaluate ad hoc, then report point estimates from a handful of trials.
 - **[Near-optimal stopping in the 10-50 trial regime](https://arxiv.org/abs/2503.10966)** — `paper` · `research` · verified 2026-09 · #evaluation #statistics #small-sample #trials
   - *What it is:* Studies evaluation stopping specifically in the trial-count regime that real-robot manipulation work actually operates in.
   - *Why it matters here:* The 10-50 trial regime is where almost all published robot evaluations live, and it is precisely where naive statistics break down. This is the closest thing to a protocol for the situation you are actually in.
+- **[A 25x gap between how LIBERO is evaluated in papers and its default config](https://arxiv.org/abs/2506.01844)** — `paper` · `research` · verified 2026-09 · #libero #evaluation #reproduction #protocol #trials
+  - *What it is:* Papers reporting LIBERO results commonly run 500 trials per suite across 3 seeds. LIBERO's own default configuration ships `n_eval: 20`.
+  - *Why it matters here:* If you reproduce a published number with the default settings and get something worse, this is a plausible reason before your training recipe is. It is also the clearest illustration of why an evaluation protocol has to be reported rather than assumed: the same benchmark, the same checkpoint, and a 25x difference in evidence.
 
 
 ## Counter-evidence — what did not work, and what stops working
@@ -630,7 +640,7 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 **Cause 2 — A dead proprioceptive state channel — the policy is effectively vision-only.**
 
 - **Test:** Print per-dimension mean/std of `observation.state`; a constant or all-zero dimension is dead. Then ablate the state at inference: replace it with zeros and with another frame's state, and measure how far the predicted action chunk moves relative to the natural cross-observation variation. `python scripts/diag_policy.py --dataset <ds> --config <cfg> --test ablate`.
-- **Fix:** pi0.5 feeds the state as discretised tokens into the VLM rather than as a continuous input, so dim order, scale and the q01/q99 statistics must match the checkpoint. Note that this behaviour is *derived*, not fixed: in openpi, `discrete_state_input` defaults to `None` and is resolved as `discrete_state_input = pi05`, so pi0.5 turns it on and pi0 turns it off — but `pi05_libero` explicitly sets it to `False` because LIBERO has no proprioceptive state. Read the flag from the config rather than assuming. If enough state dimensions are dead or mis-scaled, the tokens are constant and the phase becomes unobservable.
+- **Fix:** pi0.5 feeds the state as discretised tokens into the VLM rather than as a continuous input, so dim order, scale and the q01/q99 statistics must match the checkpoint. Note that this behaviour is *derived*, not fixed: in openpi, `discrete_state_input` defaults to `None` and is resolved as `discrete_state_input = pi05`, so pi0.5 turns it on and pi0 turns it off — but `pi05_libero` explicitly sets it to `False` because LIBERO has no proprioceptive state. Read the flag from the config rather than assuming. If enough state dimensions are dead or mis-scaled, the tokens are constant and the phase becomes unobservable. The mechanism is concrete: the state is binned into 256 buckets over the normalised [-1, 1] range, so bad normalisation statistics make every dimension saturate at bin 0 or bin 255 — turning the state into a *constant string* that carries no information at all while still being present in the input.
 - **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/models/pi0_config.py>
 
 **Cause 3 — The action expert has collapsed to the unconditional mean action.**
@@ -652,8 +662,8 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 **Cause 6 — Quantile normalisation computed on a small dataset has shrunk the effective action range, so the policy both trains on and emits scaled-down motion.**
 
 - **Test:** Compare the q01/q99 spread of your actions against the range of motion your demonstrations actually contain, and check how much of the training data falls in the middle of the normalised range. Reported in openpi: pi0.5 fine-tuned with LoRA on the same single-arm data as pi0 performed substantially worse, with quantile normalisation on a small dataset named as a contributing cause.
-- **Fix:** The reported fix was to disable quantile normalisation for small fine-tunes (`use_quantile_norm=False`, which requires patching the config), align batch size and learning rate with the shipped `pi05_libero` recipe rather than the pi0 defaults, and consider full fine-tuning or expert-only training rather than LoRA on both backbones. This cause is easy to miss because the loss looks healthy: the targets are scaled down consistently, so the model fits them well while emitting motion too small to do the task. It presents as hesitation or undershoot rather than as an obviously broken policy.
-- **Source:** <https://github.com/Physical-Intelligence/openpi/issues/763> · <https://github.com/Physical-Intelligence/openpi/issues/692>
+- **Fix:** Note how this is wired: in openpi the flag is set as `use_quantile_norm=model_config.model_type != ModelType.PI0`, so quantile normalisation is hard-coded ON for pi0.5 and OFF for pi0 — you do not choose it, and the plot is easy to miss. The quantiles come from per-dimension running histograms (5,000 bins), so they are bin edges rather than exact percentiles, and the normalised values are **not clipped** — anything outside q01/q99 simply maps outside [-1, 1] and trains as-is. The reported fix for small fine-tunes is to disable it (`use_quantile_norm=False`, which requires patching the config), align batch size and learning rate with the shipped `pi05_libero` recipe rather than the pi0 defaults, and consider full fine-tuning or expert-only training rather than LoRA on both backbones. This cause is easy to miss because the loss looks healthy: the targets are scaled down consistently, so the model fits them well while emitting motion too small to do the task. It presents as hesitation or undershoot rather than as an obviously broken policy.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/issues/763> · <https://github.com/Physical-Intelligence/openpi/issues/692> · <https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/training/config.py>
 
 Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://arxiv.org/abs/2509.07953>
 
@@ -738,7 +748,13 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 - **Test:** Print the raw action vector alongside the state vector for a few frames and check the joint ordering matches the URDF you are commanding.
 - **Fix:** Fix the ordering explicitly and re-verify. Padded or permuted dimensions can train to a plausible-looking loss while producing physically wrong motion.
 
-**Cause 3 — Camera pose and intrinsics differ, so the visual conditioning is out of distribution.**
+**Cause 3 — The gripper action polarity is inverted between model families, and nothing asserts it.**
+
+- **Test:** Command a known gripper value and watch what the jaws do. In openpi the convention is `0 = open`, `1 = closed`; in OpenVLA it is the opposite, with a positive value meaning open. Both are verified in code, and neither framework asserts your convention at load time.
+- **Fix:** Write the polarity down next to the action-space definition and assert it once at startup with a physical observation, not a code comment. The symptom is distinctive and easy to misread as a policy failure: the robot reaches the object correctly and then never grasps it, because it is closing the gripper when the policy meant to open.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md>
+
+**Cause 4 — Camera pose and intrinsics differ, so the visual conditioning is out of distribution.**
 
 - **Test:** Hold the policy's view fixed and ablate the images; then compare the deployment camera pose against the recorded one.
 - **Fix:** Match camera placement first — it is cheaper than retraining. If you cannot, collect a small amount of data on the new setup and fine-tune rather than expecting transfer.
@@ -852,6 +868,34 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 - **Test:** Diff your training config against the shipped reference config field by field, not by remembering which flags you passed.
 - **Fix:** Use the shipped config verbatim first and confirm it reproduces the published number, then change exactly one thing at a time. This is the documented resolution of a reported pi0.5-at-1%-on-LIBERO case, where the drift was LoRA plus `discrete_state_input=False` plus a non-standard horizon plus hand-computed statistics that differed from the checkpoint's, plus ad-hoc learning-rate changes.
 - **Source:** <https://github.com/Physical-Intelligence/openpi/issues/711>
+
+### Training collapses, produces NaNs, or the loss is orders of magnitude wrong — with no obvious change to the data.
+
+`severity: high` · `frequency: common`
+
+**Cause 1 — The pretrained weights silently failed to load, because a dependency bump renamed the checkpoint keys.**
+
+- **Test:** Compare the loss at step 0 against the loss you expect from a loaded pretrained model. A jump from around 0.5 to around 4.5 is the reported signature of pretrained weights not loading at all — you are training from scratch and the only clue is the loss scale.
+- **Fix:** Pin the `transformers` version, or verify explicitly after loading that the weights are present and non-random. Do not rely on the loader to raise: the reported failure was silent. This is the general lesson for every framework in this space — assert that the checkpoint loaded rather than assuming it did.
+- **Source:** <https://github.com/huggingface/lerobot/issues/1406>
+
+**Cause 2 — Action standard deviation is zero or near-zero, so the normalised targets explode.**
+
+- **Test:** Print per-dimension action std for your dataset before training. A zero or denormal value here produces a loss in the millions rather than a plausible-looking one.
+- **Fix:** Add a small epsilon to the denominator. Suggested range from community reports is roughly 2e-5 to 2e-4 — large enough to avoid the explosion, small enough not to distort well-conditioned dimensions.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/issues/814>
+
+**Cause 3 — Model compilation silently produces NaN through a miscompiled mask.**
+
+- **Test:** If NaNs appear only with compilation enabled, disable it and rerun the same config.
+- **Fix:** Turn compilation off to confirm, then either pin the compiler version or leave it off. The point is not that compilation is broken — it is that enabling it changes numerics, so it belongs in the diff when you bisect a NaN.
+- **Source:** <https://github.com/huggingface/lerobot/issues/4178>
+
+**Cause 4 — A resumed PEFT run silently discarded the adapters.**
+
+- **Test:** After resuming, check the trainable parameter count again — it should match the run you resumed from.
+- **Fix:** Re-verify the adapter state after every resume rather than assuming the framework restored it. Resuming is exactly where silent state loss hides, because the loss curve continues smoothly whether or not the adapters came back.
+- **Source:** <https://github.com/huggingface/lerobot/issues/3459>
 
 
 ---

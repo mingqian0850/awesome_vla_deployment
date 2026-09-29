@@ -44,6 +44,10 @@ symptoms:
           LIBERO has no proprioceptive state. Read the flag from the config rather than assuming.
           If enough state dimensions are dead or mis-scaled, the tokens are constant and the
           phase becomes unobservable.
+          The mechanism is concrete: the state is binned into 256 buckets over the
+          normalised [-1, 1] range, so bad normalisation statistics make every dimension
+          saturate at bin 0 or bin 255 — turning the state into a *constant string* that
+          carries no information at all while still being present in the input.
         sources: ["https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/models/pi0_config.py"]
       - cause: "The action expert has collapsed to the unconditional mean action."
         rank: 3
@@ -94,15 +98,23 @@ symptoms:
           same single-arm data as pi0 performed substantially worse, with quantile normalisation
           on a small dataset named as a contributing cause.
         fix: >
-          The reported fix was to disable quantile normalisation for small fine-tunes
-          (`use_quantile_norm=False`, which requires patching the config), align batch size and
-          learning rate with the shipped `pi05_libero` recipe rather than the pi0 defaults, and
-          consider full fine-tuning or expert-only training rather than LoRA on both backbones.
+          Note how this is wired: in openpi the flag is set as
+          `use_quantile_norm=model_config.model_type != ModelType.PI0`, so quantile
+          normalisation is hard-coded ON for pi0.5 and OFF for pi0 — you do not choose it, and
+          the plot is easy to miss. The quantiles come from per-dimension running histograms
+          (5,000 bins), so they are bin edges rather than exact percentiles, and the normalised
+          values are **not clipped** — anything outside q01/q99 simply maps outside [-1, 1] and
+          trains as-is.
+          The reported fix for small fine-tunes is to disable it (`use_quantile_norm=False`,
+          which requires patching the config), align batch size and learning rate with the
+          shipped `pi05_libero` recipe rather than the pi0 defaults, and consider full
+          fine-tuning or expert-only training rather than LoRA on both backbones.
           This cause is easy to miss because the loss looks healthy: the targets are scaled down
           consistently, so the model fits them well while emitting motion too small to do the
           task. It presents as hesitation or undershoot rather than as an obviously broken policy.
         sources: ["https://github.com/Physical-Intelligence/openpi/issues/763",
-                  "https://github.com/Physical-Intelligence/openpi/issues/692"]
+                  "https://github.com/Physical-Intelligence/openpi/issues/692",
+                  "https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/training/config.py"]
     sources:
       - "https://mlanthology.org/corl/2025/jain2025corl-enabling/"
       - "https://arxiv.org/abs/2509.07953"
@@ -204,8 +216,21 @@ symptoms:
         rank: 2
         test: "Print the raw action vector alongside the state vector for a few frames and check the joint ordering matches the URDF you are commanding."
         fix: "Fix the ordering explicitly and re-verify. Padded or permuted dimensions can train to a plausible-looking loss while producing physically wrong motion."
-      - cause: "Camera pose and intrinsics differ, so the visual conditioning is out of distribution."
+      - cause: "The gripper action polarity is inverted between model families, and nothing asserts it."
         rank: 3
+        test: >
+          Command a known gripper value and watch what the jaws do. In openpi the convention is
+          `0 = open`, `1 = closed`; in OpenVLA it is the opposite, with a positive value meaning
+          open. Both are verified in code, and neither framework asserts your convention at
+          load time.
+        fix: >
+          Write the polarity down next to the action-space definition and assert it once at
+          startup with a physical observation, not a code comment. The symptom is distinctive
+          and easy to misread as a policy failure: the robot reaches the object correctly and
+          then never grasps it, because it is closing the gripper when the policy meant to open.
+        sources: ["https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"]
+      - cause: "Camera pose and intrinsics differ, so the visual conditioning is out of distribution."
+        rank: 4
         test: "Hold the policy's view fixed and ablate the images; then compare the deployment camera pose against the recorded one."
         fix: "Match camera placement first — it is cheaper than retraining. If you cannot, collect a small amount of data on the new setup and fine-tune rather than expecting transfer."
   - id: sim-works-real-fails
@@ -375,3 +400,47 @@ symptoms:
           `discrete_state_input=False` plus a non-standard horizon plus hand-computed statistics
           that differed from the checkpoint's, plus ad-hoc learning-rate changes.
         sources: ["https://github.com/Physical-Intelligence/openpi/issues/711"]
+  - id: training-collapses-unexpectedly
+    symptom: "Training collapses, produces NaNs, or the loss is orders of magnitude wrong — with no obvious change to the data."
+    severity: high
+    frequency: "common"
+    causes:
+      - cause: "The pretrained weights silently failed to load, because a dependency bump renamed the checkpoint keys."
+        rank: 1
+        test: >
+          Compare the loss at step 0 against the loss you expect from a loaded pretrained model.
+          A jump from around 0.5 to around 4.5 is the reported signature of pretrained weights
+          not loading at all — you are training from scratch and the only clue is the loss scale.
+        fix: >
+          Pin the `transformers` version, or verify explicitly after loading that the weights are
+          present and non-random. Do not rely on the loader to raise: the reported failure was
+          silent. This is the general lesson for every framework in this space — assert that the
+          checkpoint loaded rather than assuming it did.
+        sources: ["https://github.com/huggingface/lerobot/issues/1406"]
+      - cause: "Action standard deviation is zero or near-zero, so the normalised targets explode."
+        rank: 2
+        test: "Print per-dimension action std for your dataset before training. A zero or denormal value here produces a loss in the millions rather than a plausible-looking one."
+        fix: >
+          Add a small epsilon to the denominator. Suggested range from community reports is
+          roughly 2e-5 to 2e-4 — large enough to avoid the explosion, small enough not to
+          distort well-conditioned dimensions.
+        sources: ["https://github.com/Physical-Intelligence/openpi/issues/814"]
+        notes: >
+          The epsilon value is from secondary field notes rather than from the issue body
+          itself. Treat the range as a starting point and confirm on your own data.
+      - cause: "Model compilation silently produces NaN through a miscompiled mask."
+        rank: 3
+        test: "If NaNs appear only with compilation enabled, disable it and rerun the same config."
+        fix: >
+          Turn compilation off to confirm, then either pin the compiler version or leave it off.
+          The point is not that compilation is broken — it is that enabling it changes numerics,
+          so it belongs in the diff when you bisect a NaN.
+        sources: ["https://github.com/huggingface/lerobot/issues/4178"]
+      - cause: "A resumed PEFT run silently discarded the adapters."
+        rank: 4
+        test: "After resuming, check the trainable parameter count again — it should match the run you resumed from."
+        fix: >
+          Re-verify the adapter state after every resume rather than assuming the framework
+          restored it. Resuming is exactly where silent state loss hides, because the loss curve
+          continues smoothly whether or not the adapters came back.
+        sources: ["https://github.com/huggingface/lerobot/issues/3459"]
