@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-102 entries · 36 production · 54 research · 8 toy · 4 abandoned
+112 entries · 43 production · 57 research · 8 toy · 4 abandoned
 
 </div>
 
@@ -90,13 +90,14 @@ The hand-written pages, where the parts that no link can give you live:
 
 | You are... | Start at |
 |---|---|
-| about to collect your first dataset | [Data](#data--collection-annotation-cleaning-segmentation) |
+| about to collect your first dataset | [Data](#data--collection-annotation-cleaning-segmentation), then [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) for how much data people actually needed |
 | stuck: the policy does the first motion then stops | [Troubleshooting](#troubleshooting--symptom-to-root-cause-to-fix) |
 | fine-tuning pi0.5 on your own arm | [Training](#training--frameworks-recipes-action-representations) and [Training recipes](#training-recipes--the-numbers) |
 | deciding what hardware to buy | [Training recipes](#training-recipes--the-numbers) — the VRAM matrix is published |
 | moving from a working demo to a real deployment | [Deployment](#deployment--inference-timing-optimisation-edge-integration) and [Real-time inference](docs/41-real-time-inference.md) |
 | trying to get a number you can trust | [Evaluation](#evaluation) and [Optimisation matrix](docs/40-optimization-matrix.md) |
-| looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — six documented gaps |
+| looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — documented gaps with reasons |
+| about to conclude your data is the problem | [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) — nine documented failures, including one where more data was explicitly not the fix |
 
 ---
 
@@ -109,6 +110,7 @@ The hand-written pages, where the parts that no link can give you live:
 - [Deployment — inference timing, optimisation, edge, integration](#deployment--inference-timing-optimisation-edge-integration)
 - [Deployment benchmarks — measured, not cited](#deployment-benchmarks--measured-not-cited)
 - [Evaluation](#evaluation)
+- [Counter-evidence — what did not work, and what stops working](#counter-evidence--what-did-not-work-and-what-stops-working)
 - [Troubleshooting — symptom to root cause to fix](#troubleshooting--symptom-to-root-cause-to-fix)
   - [The policy executes the first sub-task of a chained task, then stalls or](#the-policy-executes-the-first-sub-task-of-a-chained-task-then-stalls-or-repeats-it--regardless-of-the-initial-state)
   - [The robot hesitates or does not move at the beginning of a rollout, then](#the-robot-hesitates-or-does-not-move-at-the-beginning-of-a-rollout-then-behaves-normally)
@@ -483,6 +485,42 @@ Most labs evaluate ad hoc, then report point estimates from a handful of trials.
 - **[Near-optimal stopping in the 10-50 trial regime](https://arxiv.org/abs/2503.10966)** — `paper` · `research` · verified 2026-09 · #evaluation #statistics #small-sample #trials
   - *What it is:* Studies evaluation stopping specifically in the trial-count regime that real-robot manipulation work actually operates in.
   - *Why it matters here:* The 10-50 trial regime is where almost all published robot evaluations live, and it is precisely where naive statistics break down. This is the closest thing to a protocol for the situation you are actually in.
+
+
+## Counter-evidence — what did not work, and what stops working
+
+A section no other list in this space has, and the one most likely to save you a month. Every entry is a negative result, a non-transfer report, or a documented regression — reported by the people who ran the experiment, with the numbers they gave. These belong in a deployment list for the same reason the provenance policy exists: the published record is heavily selected toward successes, so the failures are the scarce information. A warning that applies to this whole section: an entry here is not a claim that a method is bad. It is a claim that someone tried it, in a specific setting, and this is what happened.
+
+- **[A working fine-tune degraded to unusable in weeks, with no code or data change](https://openvla-oft.github.io/)** — `blog` · `production` · verified 2026-09 · #drift #calibration #non-reproducibility #camera-pose #wear
+  - *What it is:* The OpenVLA-OFT authors, explaining why one task performed far worse than harder ones: "we would observe over 90% success rate on this task with fine-tuned OpenVLA policies. However, due to distribution shifts, performance dropped quite significantly when we ran the tests again weeks later." They attribute it to "shifts in the wrist camera viewpoints and slight wear-and-tear in a few robot joints, which affected the dynamics", and note that the task ultimately had to be re-evaluated with all methods simultaneously "so that they all encounter the same train-test distribution shifts".
+  - *Why it matters here:* The strongest evidence anywhere that a VLA deployment can silently rot. It is the reason `templates/deployment-manifest.yaml` exists: without binding a checkpoint to the camera pose, the calibration hash and the joint condition it was validated against, "the model that worked last month" is an unfalsifiable claim and you will spend that month retraining. Physical wear is a distribution shift, and it is not in any dataset.
+- **[A good loss curve is not a working policy](https://docs.picknik.ai/how_to/vla/train_a_vla_policy/)** — `docs` · `production` · verified 2026-09 · #loss #evaluation #overfitting #validation #pitfall
+  - *What it is:* An engineering runbook warning that the standard pi0.5 LoRA fine-tune "trains against your demonstrations with no held-out validation split and no rollouts in the loop, so it has no evaluation metric. Low loss means the model reproduces the demonstrations it was shown. It does not mean the policy completes the task, and because nothing is held out, overfitting does not show up in the curve."
+  - *Why it matters here:* States plainly the thing that wastes the most time in this field: reading the loss as if it were a success rate. It is also the cleanest argument for instrumenting rollouts from the first day rather than after the loss looks good.
+- **[Quadrupling the dataset did not fix a language-grounding failure](https://openvla-oft.github.io/)** — `blog` · `production` · verified 2026-09 · #negative-result #language-grounding #data-scaling #film
+  - *What it is:* On the "put X into pot" task, the authors report that "simply doubling/quadrupling the dataset size did not solve the problem, as it only slightly improved language following ability. To achieve much better language grounding, we had to take additional measures", such as adding FiLM conditioning. They also state they did not actually need all 300 demonstrations they collected for satisfactory performance.
+  - *Why it matters here:* Direct counter-evidence to the reflex answer of "collect more episodes". More data in the same distribution does not fix a conditioning failure — if the instruction is not being used, more examples of it not being used does not help. Diagnose which failure you have before spending weeks on collection.
+- **[25 episodes explicitly was not enough](https://github.com/huggingface/lerobot/blob/main/docs/source/smolvla.mdx)** — `docs` · `production` · verified 2026-09 · #episode-count #data-size #negative-result #smolvla
+  - *What it is:* The SmolVLA documentation reports a controlled comparison: "we recorded 50 episodes across 5 distinct cube positions... We tried similar dataset with 25 episodes, and it was not enough leading to a bad performance. So, the data quality and quantity is definitely a key." The same docs recommend about 50 episodes as a starting point.
+  - *Why it matters here:* A rare published number where a *specific* demonstration count is documented as failing, rather than a vague recommendation to collect more. Combined with the maintainer guidance below, it gives you a defensible floor instead of a guess.
+- **[50 episodes is a floor, not a target](https://github.com/huggingface/lerobot/issues/2378)** — `discussion` · `production` · verified 2026-09 · #episode-count #data-size #planning #pi05
+  - *What it is:* Maintainer guidance on how much data a pi0.5 fine-tune needs: "~50 episodes is a reasonable start for a single-location PnP; go to 100-200 if you vary object/position." The docs state the same rule as "at least 50 episodes, with 10 episodes per location".
+  - *Why it matters here:* Converts the collection question from "more is better" into a number you can plan against, and makes the key variable explicit: it is not the episode count, it is the number of distinct *conditions* you need to cover. Ten episodes per location is a much more useful planning rule than a total.
+- **[The pi0 authors say it may not work for you](https://github.com/Physical-Intelligence/openpi)** — `docs` · `production` · verified 2026-09 · #non-transfer #expectations #pi0
+  - *What it is:* From the openpi README: "pi0 was developed for our own robots, which differ from the widely used platforms such as ALOHA and DROID... we do not expect every such attempt to be successful. All this is to say: pi0 may or may not work for you."
+  - *Why it matters here:* Worth citing when a fine-tune fails and the instinct is to blame your own data pipeline. The model authors state that transfer to a different platform is not guaranteed. It also justifies budgeting for a port as a research task rather than an engineering one.
+- **[The policy reproduces the flaws in your demonstrations](https://openvla-oft.github.io/)** — `blog` · `production` · verified 2026-09 · #negative-result #data-quality #imitation #demonstrations
+  - *What it is:* Reported case: "When using a diffusion-based fine-tuned VLA (pi0) to scoop pretzels, the robot fails because it inserts the spoon too deeply... pi0 generates this same behavior two times in twelve trials" — copied from suboptimal demonstrations in the training data.
+  - *Why it matters here:* Imitation learning reproduces the data, including its mistakes. A behaviour that appears in a consistent fraction of rollouts is usually in your demonstrations, not in the model. This is the argument for watching your own teleoperation footage before assuming an optimisation problem.
+- **[Sim benchmarks obscured the real deployment problems](https://openaccess.thecvf.com/content/CVPR2026W/MEIS/html/Liu_Bridging_the_Pretrain-to-Real_Gap_Alignment_Challenges_in_Deploying_Generalist_VLA_CVPRW_2026_paper.html)** — `paper` · `research` · verified 2026-09 · #sim-to-real #benchmark-critique #openvla #franka
+  - *What it is:* A workshop paper on deploying a 7B OpenVLA on a real Franka Research 3, reporting that "the prevailing reliance on simulated benchmarks obscures the severe physical and algorithmic domain shifts encountered during real-world hardware deployment", and that making it work required deterministic decoding enforcement, strict thresholding from continuous to binary, geometric retargeting and LoRA.
+  - *Why it matters here:* Peer-reviewed support for treating simulation results as a screening filter rather than evidence of deployment readiness — and a concrete list of the unglamorous fixes that real deployment actually needed.
+- **[~100 demonstrations, and a concrete training target](https://github.com/openvla/openvla/issues/12)** — `discussion` · `research` · verified 2026-09 · #episode-count #action-token-accuracy #openvla #metrics
+  - *What it is:* An OpenVLA author's guidance: "training dataset size: ~100 episodes", and "we usually train the model to ~95+% action token accuracy". The README repeats the roughly 100-demonstration figure and notes that out of the box the model only works well on domains from its training data.
+  - *Why it matters here:* Gives an alternative to watching the loss: action-token accuracy on your own data is a concrete, checkable target with a stated value, and it is a much better early signal than the training loss.
+- **[Pretraining is worth +26.6 points on the same task](https://arxiv.org/abs/2506.01844)** — `paper` · `research` · verified 2026-09 · #pretraining #smolvla #success-rate #benchmark
+  - *What it is:* SmolVLA reports 51.7% success on SO100 without pretraining on community datasets, rising to 78.3% after pretraining on community-collected data — a +26.6 point absolute improvement. It was trained on fewer than 30k episodes drawn entirely from public datasets, roughly an order of magnitude less data than prior work, standardised at 30 FPS.
+  - *Why it matters here:* Quantifies what you get from starting at a pretrained checkpoint rather than from scratch, which is the main argument for the fine-tuning approach this repo assumes. It also sets a realistic expectation for how far a small open model can go when the pretraining mixture matches your hardware.
 
 
 ## Troubleshooting — symptom to root cause to fix

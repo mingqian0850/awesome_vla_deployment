@@ -90,13 +90,14 @@ The hand-written pages, where the parts that no link can give you live:
 
 | You are... | Start at |
 |---|---|
-| about to collect your first dataset | [Data](#data--collection-annotation-cleaning-segmentation) |
+| about to collect your first dataset | [Data](#data--collection-annotation-cleaning-segmentation), then [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) for how much data people actually needed |
 | stuck: the policy does the first motion then stops | [Troubleshooting](#troubleshooting--symptom-to-root-cause-to-fix) |
 | fine-tuning pi0.5 on your own arm | [Training](#training--frameworks-recipes-action-representations) and [Training recipes](#training-recipes--the-numbers) |
 | deciding what hardware to buy | [Training recipes](#training-recipes--the-numbers) — the VRAM matrix is published |
 | moving from a working demo to a real deployment | [Deployment](#deployment--inference-timing-optimisation-edge-integration) and [Real-time inference](docs/41-real-time-inference.md) |
 | trying to get a number you can trust | [Evaluation](#evaluation) and [Optimisation matrix](docs/40-optimization-matrix.md) |
-| looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — six documented gaps |
+| looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — documented gaps with reasons |
+| about to conclude your data is the problem | [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) — nine documented failures, including one where more data was explicitly not the fix |
 
 ---
 
