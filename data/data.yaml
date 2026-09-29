@@ -255,3 +255,127 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [tool, diagnostics, quality, lerobot, overlap]
+  - id: lerobot-language-schema
+    name: "LeRobot language columns and recipes — a shipping annotation schema, and pi0.5's joint subtask conditioning"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/language_and_recipes.mdx"
+    type: docs
+    what: >
+      Two optional parquet columns beside the frames. `language_persistent` holds rows
+      broadcast across every frame for state that remains active — styles `subtask`, `plan`,
+      `memory`. `language_events` holds rows only on the exact frame an event was emitted —
+      `interjection`, `vqa`, speech tool calls. Rows carry role/content/style/timestamp and,
+      for view-dependent styles, a `camera` field that a validator enforces. A YAML recipe
+      layer then turns rows into chat turns with weighted blends.
+      Critically for pi0.5: `recipes/subtask_joint.yaml` supervises the assistant subtask with
+      text cross-entropy on the low-level stream while action prediction stays active, which
+      the docs state matches the joint setup from the pi0.5 paper, and
+      `--policy.joint_subtask_conditioning=true` enables that conditioning at inference.
+    why: >
+      **Read this before inventing your own annotation schema.** It is the only annotation
+      schema that ships inside a real dataset format, and it separates persistent from
+      event language — the distinction homegrown schemas get wrong, because a sub-task label
+      is state that persists across frames while an interjection is a moment.
+      It is also the concrete answer to the phase-aliasing fix: this is how a per-frame
+      sub-task label actually reaches a pi0.5 action expert, and it means the hierarchical
+      path is available if you are on LeRobot. Note the codebase split — openpi contains no
+      subtask branch at all, so on openpi the route is the instruction string.
+    maturity: production
+    verified: 2026-09
+    tags: [annotation, schema, subtask, pi05, joint-conditioning, language]
+  - id: lerobot-annotation-pipeline
+    name: "LeRobot annotation pipeline — VLM auto-labelling that produces those columns"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/annotation_pipeline.mdx"
+    type: docs
+    what: >
+      A VLM pipeline (`lerobot-annotate`) that generates the language columns: plan/subtask,
+      memory, interjection and VQA modules, a served VLM by default via vLLM, optional dispatch
+      to hosted jobs, a validator, and a cost estimate. Subtasks are produced by a two-step
+      describe-then-segment flow over timestamped contact sheets — frames sampled at 0.5 s with
+      the time burned into each image — with an explicit causal definition of an event boundary.
+    why: >
+      The only end-to-end VLM auto-labelling pipeline from a major organisation, and the
+      contact-sheet trick is the part worth stealing even if you build your own: segmenting a
+      time-annotated strip of frames is a far easier VLM task than segmenting video, and it
+      makes the model's boundary decision auditable by a human afterwards.
+    maturity: production
+    verified: 2026-09
+    tags: [annotation, vlm, auto-labelling, subtask, pipeline]
+  - id: lerobot-annotation-ui
+    name: "lerobot-annotate — annotation UI"
+    url: "https://github.com/huggingface/lerobot-annotate"
+    type: repo
+    what: "A lightweight web UI for annotating LeRobot datasets."
+    why: >
+      The human correction pass on top of automatic labels. Worth having because automatic
+      sub-task boundaries are good enough to seed and not good enough to trust — and a
+      boundary error inside a chained task is exactly the kind of label noise that teaches a
+      policy the wrong phase.
+    maturity: production
+    verified: 2026-09
+    tags: [annotation, ui, human-in-the-loop, subtask]
+  - id: lerobot-good-dataset
+    name: "LeRobot — what makes a good dataset"
+    url: "https://huggingface.co/blog/lerobot-datasets"
+    type: blog
+    what: >
+      The closest thing to a written collection SOP: at least two camera views, steady capture,
+      stable lighting and exposure, the leader arm out of frame, only the follower and the
+      objects moving, static background, at least 480x640 (720p preferred), around 30 FPS,
+      `<modality>.<location>` naming, and task strings of 25-50 characters. It also enumerates
+      the four failure modes seen in community datasets.
+    why: >
+      Use it as your collection spec rather than writing one. The "only the follower and the
+      objects move, leader arm out of frame" rule is the one most often broken, and it matters
+      because a leader arm in view is a second, correlated copy of the action — the policy will
+      happily learn to read it.
+    maturity: production
+    verified: 2026-09
+    tags: [collection, sop, checklist, camera, dataset-quality]
+  - id: hd-space
+    name: "HD-Space — staged collection for later-phase start states"
+    url: "https://arxiv.org/abs/2505.17389"
+    type: paper
+    what: "Collects data in stages: roll out the current policy to reach later-phase start states, then collect demonstrations from there."
+    why: >
+      The direct answer to "all my demonstrations start from the same initial state", which is
+      the data-side cause of a policy that only ever performs the first motion. It gets you
+      intermediate-state initialisation without hand-resetting the scene between every episode —
+      the practical obstacle that stops teams from collecting this data at all.
+    maturity: research
+    verified: 2026-09
+    tags: [collection, intermediate-states, long-horizon, covariate-shift, recovery]
+  - id: robomimic-what-matters
+    name: "What Matters in Learning from Offline Human Demonstrations"
+    url: "https://arxiv.org/abs/2108.03298"
+    type: paper
+    what: >
+      The canonical study of demonstration-data quality. Two findings to carry into any dataset
+      decision: the mixed-quality regime has more demonstrations than the proficient-human
+      regime (300 versus 200) and still scores lower — more mixed-quality data loses to less
+      good data — and the lowest-validation-loss checkpoint is between 10% and 100% worse than
+      the best checkpoint. It also quantifies that dropping wrist cameras costs 10-45% relative
+      success in some tasks.
+    why: >
+      The empirical backing for the two habits this repo keeps recommending: prefer clean
+      demonstrations over volume, and never select a checkpoint by validation loss. Both are
+      quantified here rather than asserted.
+    maturity: research
+    verified: 2026-09
+    tags: [data-quality, study, checkpoint-selection, cameras, negative-result]
+  - id: data-scaling-laws
+    name: "Data Scaling Laws in Imitation Learning for Robotic Manipulation"
+    url: "https://arxiv.org/abs/2410.18647"
+    type: paper
+    what: >
+      Over 40,000 demonstrations and 15,000 real rollouts. Generalisation scales roughly as a
+      power law in the number of environments and objects, with saturation in demonstrations
+      per object. Four collectors working for one afternoon reached about 90% success in novel
+      environments with unseen objects.
+    why: >
+      The most decision-relevant paper for spending a data budget: collect breadth, not depth.
+      If you are choosing between more demonstrations in the same scene and fewer
+      demonstrations across more scenes, this is the evidence that the second is worth more.
+      It is also the counterweight to the reflex of extending an existing session.
+    maturity: research
+    verified: 2026-09
+    tags: [data-scaling, diversity, collection, budget, environments]
