@@ -31,6 +31,8 @@ files by `scripts/build_readme.py` — never edit the README by hand.
 | `discussion` | GitHub issue, forum thread, Discord distillation |
 | `standard` | ISO/IEC/UL/ANSI standard or regulatory text |
 | `list` | another curated list |
+| `benchmark` | a measurement someone actually ran |
+| `gap` | **a measurement nobody has published.** Deliberate: writing down that a number does not exist beats inventing one. Points at an issue the reader can fill in |
 
 ## `maturity`
 

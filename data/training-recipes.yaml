@@ -1,0 +1,173 @@
+section: "Training recipes — the numbers"
+order: 35
+description: >
+  Every figure here is quoted from a primary source that was fetched and read, not recalled.
+  Where the field does not publish a number, the field says so — a documented gap is a
+  finding, and inventing a plausible figure would defeat the purpose of this repo.
+
+  The honest summary: hardware requirements and hyperparameters ARE published; comparative
+  success-rate numbers for LoRA vs full fine-tune vs frozen backbone are NOT. That second
+  column is the most valuable empty space in this document.
+entries:
+  - id: openpi-requirements
+    name: "openpi — GPU / VRAM requirements"
+    url: "https://github.com/Physical-Intelligence/openpi"
+    type: docs
+    what: >
+      Quoted from the openpi README requirements table (single GPU, no model parallelism):
+      Inference > 8 GB (RTX 4090); Fine-Tuning with LoRA > 22.5 GB (RTX 4090);
+      Fine-Tuning full > 70 GB (A100 80GB / H100). Multi-GPU is supported via `fsdp_devices`
+      in the training config to reduce per-GPU memory; multi-node is not supported.
+    why: >
+      The most concrete public answer to "what hardware do I need" for pi0 / pi0.5. The
+      practical decision it settles for most teams: LoRA fits on a single 24 GB consumer card,
+      full fine-tuning does not — and the repo does not tell you what the success-rate
+      difference is, which is exactly the number you need to make that call.
+    maturity: production
+    verified: 2026-09
+    tags: [vram, hardware, pi0, pi05, recipe]
+    notes: "Quoted verbatim from the README section 'Requirements'."
+  - id: openpi-norm-stats
+    name: "openpi — normalisation statistics and when to reuse them"
+    url: "https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"
+    type: docs
+    what: >
+      First-party documentation of normalisation statistics: they are computed over the
+      training data and stored alongside the checkpoint, and can be reloaded for a new
+      fine-tune via `AssetsConfig(assets_dir=..., asset_id=...)`. Pre-training statistics are
+      provided per embodiment — `trossen` (ALOHA), `trossen_mobile`, `droid`, `franka`,
+      `ur5e`, `ur5e_dual`, `arx`, `arx_mobile`, `fibocom_mobile`.
+    why: >
+      This is the document that decides whether your fine-tune converges. It also corrects a
+      widespread piece of advice: openpi does NOT say "always recompute the statistics".
+      It says to **try both** reloading the pretrained statistics and computing fresh ones,
+      and keep whichever works better — reloading can be *better* when your robot matches a
+      pre-training embodiment, because the actions then land in a range the model finds
+      familiar.
+    maturity: production
+    verified: 2026-09
+    tags: [normalization, q01, q99, statistics, gotcha]
+    notes: >
+      Reusing pre-training statistics only works if your action space follows the same
+      convention. See the action-space entry below before assuming it applies to you.
+  - id: openpi-action-space
+    name: "openpi — action space and control frequency conventions"
+    url: "https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"
+    type: docs
+    what: >
+      dim_0:dim_5 = left arm joint angles (radians), dim_6 = left gripper, dim_7:dim_12 = right
+      arm joints, dim_13 = right gripper, dim_14:dim_15 = x-y base velocity (mobile only).
+      7-DoF robots such as Franka use the first 7 dimensions for joints and the 8th for the
+      gripper. Gripper positions are in [0.0, 1.0] with 0.0 fully open and 1.0 fully closed.
+      Control frequency is 20 Hz for UR5e and Franka, 50 Hz for ARX and Trossen (ALOHA).
+    why: >
+      The single highest-yield thing to check when porting a policy to a new arm. Two traps
+      hide here: the gripper convention is inverted relative to many drivers (0 = open, not
+      closed), and a control-frequency mismatch silently changes the physical duration of a
+      fixed-length action chunk.
+    maturity: production
+    verified: 2026-09
+    tags: [action-space, gripper, control-frequency, porting]
+  - id: droid-action-space
+    name: "DROID action space is joint VELOCITY, not position"
+    url: "https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"
+    type: docs
+    what: >
+      "For DROID, we use the original DROID action configuration, with joint velocity actions
+      in the first 7 dimensions and gripper actions in the 8th dimension + a control frequency
+      of 15 Hz."
+    why: >
+      A concrete instance of the general delta/absolute/velocity confusion, documented by the
+      model authors. If you fine-tune on DROID data and deploy on a position-controlled arm —
+      or the reverse — the policy will produce motion that is wrong in a way that looks like a
+      bad model rather than a unit mismatch.
+    maturity: production
+    verified: 2026-09
+    tags: [action-space, velocity, droid, gotcha]
+  - id: lerobot-pi05-recipe
+    name: "LeRobot — pi0.5 fine-tuning recipe"
+    url: "https://huggingface.co/docs/lerobot/en/pi05"
+    type: docs
+    what: >
+      Reference command, sized for a single 80 GB GPU: `--batch_size=64`, `--steps=30000`,
+      `--policy.n_action_steps=10`, `--policy.gradient_checkpointing=true`,
+      `--policy.dtype=bfloat16`, `--num_workers=8`, `--save_freq=5000`. A second variant sets
+      `--policy.freeze_vision_encoder=true --policy.train_expert_only=true`.
+    why: >
+      The most directly copyable pi0.5 recipe that exists. The docs state the tradeoff for the
+      frozen variant explicitly — "less memory, at some cost in success rate" — which is
+      unusually honest, and is the only public statement of that tradeoff I found.
+    maturity: production
+    verified: 2026-09
+    tags: [recipe, pi05, hyperparameters, frozen-vlm]
+  - id: lerobot-pi0-recipe
+    name: "LeRobot — pi0 fine-tuning recipe"
+    url: "https://huggingface.co/docs/lerobot/en/pi0"
+    type: docs
+    what: >
+      Reference command: `--batch_size=32`, `--steps=3000`, `--policy.compile_model=true`,
+      `--policy.gradient_checkpointing=true`, `--policy.dtype=bfloat16`.
+    why: >
+      Note the step count — 3000, an order of magnitude below the pi0.5 recipe's 30000. If you
+      copy a step count between these two models you will either under-train or waste days.
+    maturity: production
+    verified: 2026-09
+    tags: [recipe, pi0, hyperparameters]
+  - id: openpi-idle-filter
+    name: "openpi — idle filter for DROID training"
+    url: "https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md"
+    type: docs
+    what: >
+      "By default, our openpi training recipe implements the same idle filter used to train all
+      pi-DROID models... we filter any time steps for which the next chunk of actions would be
+      largely idle." Implemented by pre-computing dataset indices
+      (`compute_droid_nonidle_ranges.py`) and passing `filter_dict_path` in the training config.
+    why: >
+      First-party confirmation that idle filtering is not a superstition — the model authors
+      built it into the default recipe. This is the strongest available evidence for the
+      episode-head idle hypothesis in the troubleshooting section, where a policy learns "at
+      the reset state, do not move".
+    maturity: production
+    verified: 2026-09
+    tags: [idle, filtering, sampling, droid]
+    notes: >
+      The published index list is only valid for the `droid/1.0.1` dataset. For your own data,
+      rerun the script — or compute the equivalent in `scripts/diag_dataset.py`, which reports
+      episode-head idle contamination directly.
+  - id: rtc-training
+    name: "Training-Time Action Conditioning for Efficient Real-Time Chunking"
+    url: "https://arxiv.org/abs/2512.05964"
+    type: paper
+    what: >
+      Trains the policy to accept an action prefix as conditioning, so that asynchronous
+      execution joins smoothly instead of jumping. Exposed in LeRobot as
+      `policy.rtc_training_max_delay`, set to the largest expected inference delay in
+      controller steps.
+    why: >
+      The difference between inference-time RTC, which patches over the chunk-boundary
+      discontinuity, and training-time conditioning, which removes it. If you know your
+      deployment latency at training time, this is the more principled fix.
+    maturity: research
+    verified: 2026-09
+    tags: [rtc, async, training, latency]
+  - id: frozen-vs-lora-vs-full
+    name: "LoRA vs full fine-tune vs frozen backbone — the missing comparison"
+    url: "https://github.com/Physical-Intelligence/openpi"
+    type: paper
+    what: >
+      NOT PUBLISHED. Hardware requirements for all three regimes are documented (8 GB
+      inference, 22.5 GB LoRA, 70 GB full), and LeRobot documents that freezing the VLM costs
+      "some success rate" — but no source found publishes the comparative success-rate numbers
+      on a named task with a named dataset.
+    why: >
+      This is deliberately an entry rather than an omission. It is the single most-asked
+      practical question in VLA fine-tuning, and the answer is currently folklore. If you have
+      run this comparison, contributing the numbers here is worth more than any paper citation
+      in this repo.
+    maturity: toy
+    verified: 2026-09
+    tags: [gap, lora, fine-tuning, comparison, wanted]
+    notes: >
+      To contribute: name the base model, the dataset, the number of demonstrations, the GPU,
+      wall-clock time, and success rate with trial count for each of the three regimes. Null
+      results are welcome and useful.

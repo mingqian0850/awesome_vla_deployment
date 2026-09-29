@@ -59,7 +59,10 @@ symptoms:
           Drop or down-weight those frames and retrain. This is the cheapest fix in the whole
           document and it is frequently the answer — if the operator starts recording before
           touching the controller, every episode contributes a large, perfectly consistent
-          'at this state, do not move' sample.
+          'at this state, do not move' sample. This is not a heuristic: the openpi training
+          recipe ships an idle filter as a default, filtering "any time steps for which the
+          next chunk of actions would be largely idle".
+        sources: ["https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md"]
       - cause: "Episode-head frames dominate and the policy never sees the later phases from its own state distribution (covariate shift)."
         rank: 5
         test: >
@@ -146,10 +149,28 @@ symptoms:
     severity: high
     frequency: common
     causes:
-      - cause: "Action space and normalisation statistics do not match the new embodiment."
+      - cause: "Normalisation statistics do not match the new embodiment — either the wrong ones are loaded, or the dataset's are missing."
         rank: 1
-        test: "Compare per-dimension q01/q99 of your actions and states against the statistics stored with the checkpoint."
-        fix: "Recompute statistics on the target embodiment's own data. Reusing pretrained quantiles on a new robot silently squashes small motions into the middle of the range, which presents as 'the policy barely moves'."
+        test: >
+          Two things to check. (a) openpi stores statistics alongside the checkpoint and lets
+          you reload a per-embodiment set (`trossen`, `droid`, `franka`, `ur5e`, `arx`, ...)
+          via `AssetsConfig`. Compare per-dimension q01/q99 of your actions and states against
+          whichever set is being used. (b) For LeRobot datasets, check that
+          `meta/stats.json` actually contains `q01` and `q99` — if it does not, training
+          fails on the first batch with
+          `ValueError: QUANTILES normalization mode requires q01 and q99 stats`.
+        fix: >
+          openpi's own guidance is to **try both** — reload the pretrained statistics and
+          compute fresh ones — and keep whichever works better. Reloading can be *better* when
+          your robot matches a pre-training embodiment, because the actions then land in a
+          familiar range. The widely repeated advice to "always recompute" is stronger than
+          what the model authors actually recommend. If you recompute, use
+          `lerobot-edit-dataset --operation.type recompute_stats`, and note that recording
+          aggregates quantiles from per-episode summaries into a conservative envelope
+          (min for q <= 50, max for q > 50) rather than true dataset quantiles — which changes
+          the normalised targets and therefore the loss scale.
+        sources: ["https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md",
+                  "https://huggingface.co/docs/lerobot/en/pi05"]
       - cause: "Action dimension or ordering differs, and the mismatch is being absorbed by padding."
         rank: 2
         test: "Print the raw action vector alongside the state vector for a few frames and check the joint ordering matches the URDF you are commanding."
@@ -192,3 +213,37 @@ symptoms:
         rank: 3
         test: "Run the same fixed condition at the start and end of the session and compare."
         fix: "Interleave conditions rather than running them in blocks, and re-check calibration between blocks."
+  - id: config-did-not-apply
+    symptom: "The policy behaves as if your configuration changes had no effect."
+    severity: high
+    frequency: "common"
+    causes:
+      - cause: "`pretrained_path` loads weights only — the checkpoint's stored config values silently fall back to defaults."
+        rank: 1
+        test: >
+          Print the effective policy config after loading, not the one you passed. LeRobot
+          documents this explicitly for pi0.5: `--policy.pretrained_path` loads weights only,
+          so `lerobot/pi05_libero_base`, which stores both `n_action_steps` and
+          `empty_cameras`, falls back to `50` and `0` unless you pass them explicitly.
+        fix: >
+          Pass the values explicitly rather than relying on them being restored from the
+          checkpoint, and verify by printing the constructed policy. The same class of bug
+          affects any framework that separates "load weights" from "load config".
+        sources: ["https://huggingface.co/docs/lerobot/en/pi05"]
+      - cause: "Normalisation mapping default differs between the base checkpoint and your recipe."
+        rank: 2
+        test: >
+          Check which mapping is in effect. LeRobot's pi0.5 example passes
+          `--policy.normalization_mapping='{\"ACTION\": \"MEAN_STD\", \"STATE\": \"MEAN_STD\", \"VISUAL\": \"IDENTITY\"}'`
+          explicitly, because pi0.5's own default is quantile — and the reference checkpoint
+          the results were measured on used mean/std.
+        fix: "Match the mapping to the checkpoint you are comparing against, and state which one you used when reporting results. Two runs with different mappings are not comparable."
+        sources: ["https://huggingface.co/docs/lerobot/en/pi05"]
+      - cause: "Statistics cached inside an existing checkpoint override newly computed dataset statistics."
+        rank: 3
+        test: "Recompute the dataset statistics and check whether the loaded checkpoint's stored statistics changed."
+        fix: >
+          They will not — LeRobot states that statistics already saved inside an existing
+          checkpoint are not affected by recomputing dataset stats. Start from a checkpoint
+          without embedded statistics, or expect the stored ones to win.
+        sources: ["https://huggingface.co/docs/lerobot/en/pi05"]

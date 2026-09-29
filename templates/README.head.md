@@ -74,15 +74,29 @@ that says when a human last opened the link.
 4. Negative results are wanted. "We tried INT8 and the policy broke" is a finding.
 5. `verified` is a claim about a human having opened the link, not a timestamp bump.
 
+## The written guides
+
+The hand-written pages, where the parts that no link can give you live:
+
+| Guide | What is in it |
+|---|---|
+| [The safety layer](docs/43-safety.md) | Why a learned policy cannot be a safety function, the six layers, and how ISO 12100 / 10218 / TS 15066 / 13849 map onto a VLA inference loop |
+| [Real-time inference](docs/41-real-time-inference.md) | The latency budget arithmetic — feasibility condition, observation-age equation, and the three execution strategies |
+| [The optimisation matrix](docs/40-optimization-matrix.md) | What to measure and how, so your numbers are comparable with someone else's |
+| [Checklist: before collecting data](checklists/before-collecting-data.md) | The decisions that are cheap now and expensive later |
+| [Checklist: before a policy drives anything](checklists/before-deploying.md) | Print it and tick it in front of the robot |
+
 ## Quick start
 
 | You are... | Start at |
 |---|---|
 | about to collect your first dataset | [Data](#data--collection-annotation-cleaning-segmentation) |
 | stuck: the policy does the first motion then stops | [Troubleshooting](#troubleshooting--symptom-to-root-cause-to-fix) |
-| fine-tuning pi0.5 on your own arm | [Training](#training--frameworks-recipes-action-representations) |
-| moving from a working demo to a real deployment | [Deployment](#deployment--inference-timing-optimisation-edge-integration) |
-| trying to get a number you can trust | [Evaluation](#evaluation) |
+| fine-tuning pi0.5 on your own arm | [Training](#training--frameworks-recipes-action-representations) and [Training recipes](#training-recipes--the-numbers) |
+| deciding what hardware to buy | [Training recipes](#training-recipes--the-numbers) — the VRAM matrix is published |
+| moving from a working demo to a real deployment | [Deployment](#deployment--inference-timing-optimisation-edge-integration) and [Real-time inference](docs/41-real-time-inference.md) |
+| trying to get a number you can trust | [Evaluation](#evaluation) and [Optimisation matrix](docs/40-optimization-matrix.md) |
+| looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — six documented gaps |
 
 ---
 

@@ -102,6 +102,8 @@ def render_symptom(s) -> list[str]:
             lines.append(f"- **Test:** {c['test'].strip()}")
         if c.get("fix"):
             lines.append(f"- **Fix:** {c['fix'].strip()}")
+        if c.get("sources"):
+            lines.append("- **Source:** " + " · ".join(f"<{u}>" for u in c["sources"]))
         lines.append("")
     if s.get("sources"):
         lines.append("Sources: " + " · ".join(f"<{u}>" for u in s["sources"]))

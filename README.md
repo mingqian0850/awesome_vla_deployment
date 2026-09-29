@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-65 entries · 20 production · 37 research · 4 toy · 4 abandoned
+80 entries · 28 production · 38 research · 10 toy · 4 abandoned
 
 </div>
 
@@ -74,15 +74,29 @@ that says when a human last opened the link.
 4. Negative results are wanted. "We tried INT8 and the policy broke" is a finding.
 5. `verified` is a claim about a human having opened the link, not a timestamp bump.
 
+## The written guides
+
+The hand-written pages, where the parts that no link can give you live:
+
+| Guide | What is in it |
+|---|---|
+| [The safety layer](docs/43-safety.md) | Why a learned policy cannot be a safety function, the six layers, and how ISO 12100 / 10218 / TS 15066 / 13849 map onto a VLA inference loop |
+| [Real-time inference](docs/41-real-time-inference.md) | The latency budget arithmetic — feasibility condition, observation-age equation, and the three execution strategies |
+| [The optimisation matrix](docs/40-optimization-matrix.md) | What to measure and how, so your numbers are comparable with someone else's |
+| [Checklist: before collecting data](checklists/before-collecting-data.md) | The decisions that are cheap now and expensive later |
+| [Checklist: before a policy drives anything](checklists/before-deploying.md) | Print it and tick it in front of the robot |
+
 ## Quick start
 
 | You are... | Start at |
 |---|---|
 | about to collect your first dataset | [Data](#data--collection-annotation-cleaning-segmentation) |
 | stuck: the policy does the first motion then stops | [Troubleshooting](#troubleshooting--symptom-to-root-cause-to-fix) |
-| fine-tuning pi0.5 on your own arm | [Training](#training--frameworks-recipes-action-representations) |
-| moving from a working demo to a real deployment | [Deployment](#deployment--inference-timing-optimisation-edge-integration) |
-| trying to get a number you can trust | [Evaluation](#evaluation) |
+| fine-tuning pi0.5 on your own arm | [Training](#training--frameworks-recipes-action-representations) and [Training recipes](#training-recipes--the-numbers) |
+| deciding what hardware to buy | [Training recipes](#training-recipes--the-numbers) — the VRAM matrix is published |
+| moving from a working demo to a real deployment | [Deployment](#deployment--inference-timing-optimisation-edge-integration) and [Real-time inference](docs/41-real-time-inference.md) |
+| trying to get a number you can trust | [Evaluation](#evaluation) and [Optimisation matrix](docs/40-optimization-matrix.md) |
+| looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — six documented gaps |
 
 ---
 
@@ -91,7 +105,9 @@ that says when a human last opened the link.
 - [Landscape — what already exists](#landscape--what-already-exists)
 - [Data — collection, annotation, cleaning, segmentation](#data--collection-annotation-cleaning-segmentation)
 - [Training — frameworks, recipes, action representations](#training--frameworks-recipes-action-representations)
+- [Training recipes — the numbers](#training-recipes--the-numbers)
 - [Deployment — inference timing, optimisation, edge, integration](#deployment--inference-timing-optimisation-edge-integration)
+- [Deployment benchmarks — measured, not cited](#deployment-benchmarks--measured-not-cited)
 - [Evaluation](#evaluation)
 - [Troubleshooting — symptom to root cause to fix](#troubleshooting--symptom-to-root-cause-to-fix)
   - [The policy executes the first sub-task of a chained task, then stalls or](#the-policy-executes-the-first-sub-task-of-a-chained-task-then-stalls-or-repeats-it--regardless-of-the-initial-state)
@@ -102,6 +118,7 @@ that says when a human last opened the link.
   - [The policy works on the robot it was trained on and fails completely on ](#the-policy-works-on-the-robot-it-was-trained-on-and-fails-completely-on-a-different-arm-or-gripper)
   - [Excellent success rate in simulation, poor on hardware.](#excellent-success-rate-in-simulation-poor-on-hardware)
   - [Success rate moves by 20 points between evaluation runs with no code cha](#success-rate-moves-by-20-points-between-evaluation-runs-with-no-code-change)
+  - [The policy behaves as if your configuration changes had no effect.](#the-policy-behaves-as-if-your-configuration-changes-had-no-effect)
 
 ## Landscape — what already exists
 
@@ -273,6 +290,43 @@ Where the second-largest gap is. There are good paper lists for VLA training, bu
   - *Why it matters here:* Handy for comparing policy families without rewriting your training harness per model.
 
 
+## Training recipes — the numbers
+
+Every figure here is quoted from a primary source that was fetched and read, not recalled. Where the field does not publish a number, the field says so — a documented gap is a finding, and inventing a plausible figure would defeat the purpose of this repo. The honest summary: hardware requirements and hyperparameters ARE published; comparative success-rate numbers for LoRA vs full fine-tune vs frozen backbone are NOT. That second column is the most valuable empty space in this document.
+
+- **[openpi — GPU / VRAM requirements](https://github.com/Physical-Intelligence/openpi)** — `docs` · `production` · verified 2026-09 · #vram #hardware #pi0 #pi05 #recipe
+  - *What it is:* Quoted from the openpi README requirements table (single GPU, no model parallelism): Inference > 8 GB (RTX 4090); Fine-Tuning with LoRA > 22.5 GB (RTX 4090); Fine-Tuning full > 70 GB (A100 80GB / H100). Multi-GPU is supported via `fsdp_devices` in the training config to reduce per-GPU memory; multi-node is not supported.
+  - *Why it matters here:* The most concrete public answer to "what hardware do I need" for pi0 / pi0.5. The practical decision it settles for most teams: LoRA fits on a single 24 GB consumer card, full fine-tuning does not — and the repo does not tell you what the success-rate difference is, which is exactly the number you need to make that call.
+  - *Note:* Quoted verbatim from the README section 'Requirements'.
+- **[openpi — normalisation statistics and when to reuse them](https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md)** — `docs` · `production` · verified 2026-09 · #normalization #q01 #q99 #statistics #gotcha
+  - *What it is:* First-party documentation of normalisation statistics: they are computed over the training data and stored alongside the checkpoint, and can be reloaded for a new fine-tune via `AssetsConfig(assets_dir=..., asset_id=...)`. Pre-training statistics are provided per embodiment — `trossen` (ALOHA), `trossen_mobile`, `droid`, `franka`, `ur5e`, `ur5e_dual`, `arx`, `arx_mobile`, `fibocom_mobile`.
+  - *Why it matters here:* This is the document that decides whether your fine-tune converges. It also corrects a widespread piece of advice: openpi does NOT say "always recompute the statistics". It says to **try both** reloading the pretrained statistics and computing fresh ones, and keep whichever works better — reloading can be *better* when your robot matches a pre-training embodiment, because the actions then land in a range the model finds familiar.
+  - *Note:* Reusing pre-training statistics only works if your action space follows the same convention. See the action-space entry below before assuming it applies to you.
+- **[openpi — action space and control frequency conventions](https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md)** — `docs` · `production` · verified 2026-09 · #action-space #gripper #control-frequency #porting
+  - *What it is:* dim_0:dim_5 = left arm joint angles (radians), dim_6 = left gripper, dim_7:dim_12 = right arm joints, dim_13 = right gripper, dim_14:dim_15 = x-y base velocity (mobile only). 7-DoF robots such as Franka use the first 7 dimensions for joints and the 8th for the gripper. Gripper positions are in [0.0, 1.0] with 0.0 fully open and 1.0 fully closed. Control frequency is 20 Hz for UR5e and Franka, 50 Hz for ARX and Trossen (ALOHA).
+  - *Why it matters here:* The single highest-yield thing to check when porting a policy to a new arm. Two traps hide here: the gripper convention is inverted relative to many drivers (0 = open, not closed), and a control-frequency mismatch silently changes the physical duration of a fixed-length action chunk.
+- **[DROID action space is joint VELOCITY, not position](https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md)** — `docs` · `production` · verified 2026-09 · #action-space #velocity #droid #gotcha
+  - *What it is:* "For DROID, we use the original DROID action configuration, with joint velocity actions in the first 7 dimensions and gripper actions in the 8th dimension + a control frequency of 15 Hz."
+  - *Why it matters here:* A concrete instance of the general delta/absolute/velocity confusion, documented by the model authors. If you fine-tune on DROID data and deploy on a position-controlled arm — or the reverse — the policy will produce motion that is wrong in a way that looks like a bad model rather than a unit mismatch.
+- **[LeRobot — pi0.5 fine-tuning recipe](https://huggingface.co/docs/lerobot/en/pi05)** — `docs` · `production` · verified 2026-09 · #recipe #pi05 #hyperparameters #frozen-vlm
+  - *What it is:* Reference command, sized for a single 80 GB GPU: `--batch_size=64`, `--steps=30000`, `--policy.n_action_steps=10`, `--policy.gradient_checkpointing=true`, `--policy.dtype=bfloat16`, `--num_workers=8`, `--save_freq=5000`. A second variant sets `--policy.freeze_vision_encoder=true --policy.train_expert_only=true`.
+  - *Why it matters here:* The most directly copyable pi0.5 recipe that exists. The docs state the tradeoff for the frozen variant explicitly — "less memory, at some cost in success rate" — which is unusually honest, and is the only public statement of that tradeoff I found.
+- **[LeRobot — pi0 fine-tuning recipe](https://huggingface.co/docs/lerobot/en/pi0)** — `docs` · `production` · verified 2026-09 · #recipe #pi0 #hyperparameters
+  - *What it is:* Reference command: `--batch_size=32`, `--steps=3000`, `--policy.compile_model=true`, `--policy.gradient_checkpointing=true`, `--policy.dtype=bfloat16`.
+  - *Why it matters here:* Note the step count — 3000, an order of magnitude below the pi0.5 recipe's 30000. If you copy a step count between these two models you will either under-train or waste days.
+- **[openpi — idle filter for DROID training](https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md)** — `docs` · `production` · verified 2026-09 · #idle #filtering #sampling #droid
+  - *What it is:* "By default, our openpi training recipe implements the same idle filter used to train all pi-DROID models... we filter any time steps for which the next chunk of actions would be largely idle." Implemented by pre-computing dataset indices (`compute_droid_nonidle_ranges.py`) and passing `filter_dict_path` in the training config.
+  - *Why it matters here:* First-party confirmation that idle filtering is not a superstition — the model authors built it into the default recipe. This is the strongest available evidence for the episode-head idle hypothesis in the troubleshooting section, where a policy learns "at the reset state, do not move".
+  - *Note:* The published index list is only valid for the `droid/1.0.1` dataset. For your own data, rerun the script — or compute the equivalent in `scripts/diag_dataset.py`, which reports episode-head idle contamination directly.
+- **[Training-Time Action Conditioning for Efficient Real-Time Chunking](https://arxiv.org/abs/2512.05964)** — `paper` · `research` · verified 2026-09 · #rtc #async #training #latency
+  - *What it is:* Trains the policy to accept an action prefix as conditioning, so that asynchronous execution joins smoothly instead of jumping. Exposed in LeRobot as `policy.rtc_training_max_delay`, set to the largest expected inference delay in controller steps.
+  - *Why it matters here:* The difference between inference-time RTC, which patches over the chunk-boundary discontinuity, and training-time conditioning, which removes it. If you know your deployment latency at training time, this is the more principled fix.
+- **[LoRA vs full fine-tune vs frozen backbone — the missing comparison](https://github.com/Physical-Intelligence/openpi)** — `paper` · `toy` · verified 2026-09 · #gap #lora #fine-tuning #comparison #wanted
+  - *What it is:* NOT PUBLISHED. Hardware requirements for all three regimes are documented (8 GB inference, 22.5 GB LoRA, 70 GB full), and LeRobot documents that freezing the VLM costs "some success rate" — but no source found publishes the comparative success-rate numbers on a named task with a named dataset.
+  - *Why it matters here:* This is deliberately an entry rather than an omission. It is the single most-asked practical question in VLA fine-tuning, and the answer is currently folklore. If you have run this comparison, contributing the numbers here is worth more than any paper citation in this repo.
+  - *Note:* To contribute: name the base model, the dataset, the number of demonstrations, the GPU, wall-clock time, and success rate with trial count for each of the three regimes. Null results are welcome and useful.
+
+
 ## Deployment — inference timing, optimisation, edge, integration
 
 The reason this repo exists. Across 36 curated lists in this space, `watchdog|e-stop|deadman|velocity limit` returns roughly zero hits, no list reports which models actually export to ONNX/TensorRT/OpenVINO, and no list publishes measured latency/VRAM/success-rate deltas. This section is the start of that.
@@ -316,6 +370,31 @@ The reason this repo exists. Across 36 curated lists in this space, `watchdog|e-
 - **[pi0 fine-tuning guide with domestic-arm deployment (Chinese)](https://zeeklog.com/p0de-wei-diao-ru-he-ji-yu-ge-chong-kai-yuan-shu-ju-ji-yi-ji-si-you-shu-ju-ji-wei-diao-openpi-han-wo-si-qi-yue-de-wei-diao-shi-jian-ji-openpizai-guo-chan-bi-shang-de-bu-shu-8)** — `blog` · `research` · verified 2026-09 · #chinese #pi0 #deployment #blog
   - *What it is:* Chinese write-up of fine-tuning openpi on open and private datasets, then deploying it on a domestic robot arm.
   - *Why it matters here:* Documents the adaptation steps for hardware outside the pretraining distribution — the case where most teams actually get stuck.
+
+
+## Deployment benchmarks — measured, not cited
+
+Entries with `type: gap` are deliberate: they mark measurements that no public source publishes, in a structured place where a contributor can fill them in. Writing down that a number does not exist is more useful than writing down a number that might not be true. The protocol for producing each of these is in docs/40-optimization-matrix.md.
+
+- **[VRAM and hardware requirements (published)](https://github.com/Physical-Intelligence/openpi)** — `docs` · `production` · verified 2026-09 · #vram #hardware #published
+  - *What it is:* The one part of this matrix that IS published: openpi's README states inference > 8 GB, LoRA fine-tuning > 22.5 GB (both RTX 4090), full fine-tuning > 70 GB (A100 80GB / H100), with multi-GPU via `fsdp_devices` supported and multi-node unsupported.
+  - *Why it matters here:* Settles the hardware question for the training side. It does not answer the deployment question, which is what the `gap` entries below are about.
+- **[GAP — end-to-end inference latency per model per hardware](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #latency #wanted #benchmark
+  - *What it is:* Not published anywhere found. What is missing: observation-captured to chunk-returned latency, at p50/p95/p99, for pi0.5 / pi0 / GR00T N1.5 / OpenVLA / RDT-1B on Jetson Orin, Jetson Thor, RTX 4090 and A100.
+  - *Why it matters here:* This single table would resolve more real deployments than any paper in this repo. The feasibility arithmetic in docs/41-real-time-inference.md needs exactly two numbers — `L` and `D_c` — and only one of them is easy to find. Without `L` you cannot tell whether your control rate is achievable until you have the hardware in hand.
+  - *Note:* To contribute: report p50/p95/p99 (not the mean), the exact batch size and action horizon, the denoising step count, the dtype, and whether the timing includes camera capture and image preprocessing. Timings that exclude preprocessing are the most common source of disagreement between reports.
+- **[GAP — what quantization does to task success rate](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #quantization #wanted #benchmark
+  - *What it is:* Not published anywhere found. Missing: success rate before and after INT8 / FP8 / INT4 / GPTQ / AWQ, per model, with the latency gained and the trial count.
+  - *Why it matters here:* Quantization papers report perplexity and latency, which are proxies. For a policy, the only number that matters is whether the task still succeeds. Negative results are especially valuable here: "INT8 broke this policy because the action head's outputs are small-magnitude deltas and quantisation noise dominated them" is a finding that would save several teams a week each.
+- **[GAP — which models actually export to ONNX / TensorRT / OpenVINO](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #onnx #tensorrt #openvino #wanted
+  - *What it is:* Not published anywhere found. Missing: a per-model yes/no on whether a working export exists, which operator or dynamic-shape construct blocked it, and what the exported graph's latency was.
+  - *Why it matters here:* Existing "efficient VLA" sections in other lists are paper tables, so a reader cannot tell whether an export path exists for their model or whether it is a research proposal. A table of attempted exports — including the failures and the specific blocker — is immediately actionable.
+- **[GAP — sync vs temporal ensembling vs RTC on the same task](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #rtc #ensembling #wanted #benchmark
+  - *What it is:* Not published anywhere found. Missing: success rate and motion smoothness for the three execution strategies on one task, one checkpoint and one robot, with the inference latency reported.
+  - *Why it matters here:* The three strategies are universally discussed and never compared under controlled conditions. Without this, choosing between them is guesswork, and the choice is usually made by whichever one the codebase happens to implement.
+- **[GAP — what the safety layer costs](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #safety #latency #wanted
+  - *What it is:* Not published anywhere found. Missing: the added latency and the achievable control rate once an independent limiter, heartbeat and stale-observation guard are in the loop.
+  - *Why it matters here:* Teams skip the safety layer partly because nobody has quantified its cost. If the honest answer is "0.3 ms and 2% of a core", that removes the main practical objection to building it — and the layer in docs/43-safety.md is the most valuable unclaimed part of this whole field.
 
 
 ## Evaluation
@@ -364,7 +443,8 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 **Cause 4 — Idle frames at the head of every episode taught the policy to do nothing at the reset state.**
 
 - **Test:** Compare the fraction of near-zero-action frames in the first ~10 frames of each episode against the rest of the episode.
-- **Fix:** Drop or down-weight those frames and retrain. This is the cheapest fix in the whole document and it is frequently the answer — if the operator starts recording before touching the controller, every episode contributes a large, perfectly consistent 'at this state, do not move' sample.
+- **Fix:** Drop or down-weight those frames and retrain. This is the cheapest fix in the whole document and it is frequently the answer — if the operator starts recording before touching the controller, every episode contributes a large, perfectly consistent 'at this state, do not move' sample. This is not a heuristic: the openpi training recipe ships an idle filter as a default, filtering "any time steps for which the next chunk of actions would be largely idle".
+- **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md>
 
 **Cause 5 — Episode-head frames dominate and the policy never sees the later phases from its own state distribution (covariate shift).**
 
@@ -443,10 +523,11 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 
 `severity: high` · `frequency: common`
 
-**Cause 1 — Action space and normalisation statistics do not match the new embodiment.**
+**Cause 1 — Normalisation statistics do not match the new embodiment — either the wrong ones are loaded, or the dataset's are missing.**
 
-- **Test:** Compare per-dimension q01/q99 of your actions and states against the statistics stored with the checkpoint.
-- **Fix:** Recompute statistics on the target embodiment's own data. Reusing pretrained quantiles on a new robot silently squashes small motions into the middle of the range, which presents as 'the policy barely moves'.
+- **Test:** Two things to check. (a) openpi stores statistics alongside the checkpoint and lets you reload a per-embodiment set (`trossen`, `droid`, `franka`, `ur5e`, `arx`, ...) via `AssetsConfig`. Compare per-dimension q01/q99 of your actions and states against whichever set is being used. (b) For LeRobot datasets, check that `meta/stats.json` actually contains `q01` and `q99` — if it does not, training fails on the first batch with `ValueError: QUANTILES normalization mode requires q01 and q99 stats`.
+- **Fix:** openpi's own guidance is to **try both** — reload the pretrained statistics and compute fresh ones — and keep whichever works better. Reloading can be *better* when your robot matches a pre-training embodiment, because the actions then land in a familiar range. The widely repeated advice to "always recompute" is stronger than what the model authors actually recommend. If you recompute, use `lerobot-edit-dataset --operation.type recompute_stats`, and note that recording aggregates quantiles from per-episode summaries into a conservative envelope (min for q <= 50, max for q > 50) rather than true dataset quantiles — which changes the normalised targets and therefore the loss scale.
+- **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md> · <https://huggingface.co/docs/lerobot/en/pi05>
 
 **Cause 2 — Action dimension or ordering differs, and the mismatch is being absorbed by padding.**
 
@@ -495,6 +576,28 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 
 - **Test:** Run the same fixed condition at the start and end of the session and compare.
 - **Fix:** Interleave conditions rather than running them in blocks, and re-check calibration between blocks.
+
+### The policy behaves as if your configuration changes had no effect.
+
+`severity: high` · `frequency: common`
+
+**Cause 1 — `pretrained_path` loads weights only — the checkpoint's stored config values silently fall back to defaults.**
+
+- **Test:** Print the effective policy config after loading, not the one you passed. LeRobot documents this explicitly for pi0.5: `--policy.pretrained_path` loads weights only, so `lerobot/pi05_libero_base`, which stores both `n_action_steps` and `empty_cameras`, falls back to `50` and `0` unless you pass them explicitly.
+- **Fix:** Pass the values explicitly rather than relying on them being restored from the checkpoint, and verify by printing the constructed policy. The same class of bug affects any framework that separates "load weights" from "load config".
+- **Source:** <https://huggingface.co/docs/lerobot/en/pi05>
+
+**Cause 2 — Normalisation mapping default differs between the base checkpoint and your recipe.**
+
+- **Test:** Check which mapping is in effect. LeRobot's pi0.5 example passes `--policy.normalization_mapping='{\"ACTION\": \"MEAN_STD\", \"STATE\": \"MEAN_STD\", \"VISUAL\": \"IDENTITY\"}'` explicitly, because pi0.5's own default is quantile — and the reference checkpoint the results were measured on used mean/std.
+- **Fix:** Match the mapping to the checkpoint you are comparing against, and state which one you used when reporting results. Two runs with different mappings are not comparable.
+- **Source:** <https://huggingface.co/docs/lerobot/en/pi05>
+
+**Cause 3 — Statistics cached inside an existing checkpoint override newly computed dataset statistics.**
+
+- **Test:** Recompute the dataset statistics and check whether the loaded checkpoint's stored statistics changed.
+- **Fix:** They will not — LeRobot states that statistics already saved inside an existing checkpoint are not affected by recomputing dataset stats. Start from a checkpoint without embedded statistics, or expect the stored ones to win.
+- **Source:** <https://huggingface.co/docs/lerobot/en/pi05>
 
 
 ---
