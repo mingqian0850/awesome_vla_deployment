@@ -159,6 +159,30 @@ def main() -> int:
 
     print(f"  {len(ids) - len(missing)} resolved, {len(missing)} unresolved")
 
+    # Double-counting check. Listing the same work twice as two different rows inflates the
+    # index and is a real error we made once: the robomimic "What Matters" study appeared in
+    # two sections under two URLs. Sharing a source URL across entries is usually legitimate
+    # (one README can support several distinct facts), so this reports for review rather
+    # than failing.
+    dup_ids = {aid: {r["id"] for r in rows} for aid, rows in refs.items()}
+    dup_ids = {a: s for a, s in dup_ids.items() if len(s) > 1}
+    seen_names: dict[str, list[str]] = {}
+    for path in sorted(glob.glob(os.path.join(DATA, "*.yaml"))):
+        if os.path.basename(path) == "link-exceptions.yaml":
+            continue
+        doc = yaml.safe_load(open(path, encoding="utf-8")) or {}
+        for e in doc.get("entries", []) or []:
+            seen_names.setdefault((e.get("name") or "").strip(), []).append(e.get("id", "?"))
+    dup_names = {n: v for n, v in seen_names.items() if n and len(v) > 1}
+
+    if dup_ids or dup_names:
+        print("\nPOSSIBLE DOUBLE-COUNTING (review; one source can legitimately back "
+              "several entries):")
+        for aid, ident in sorted(dup_ids.items()):
+            print(f"  arXiv {aid} is referenced by {len(ident)} entries: {', '.join(sorted(ident))}")
+        for name, ident in sorted(dup_names.items()):
+            print(f"  duplicate entry name {name!r}: {', '.join(ident)}")
+
     if missing:
         print("\nUNRESOLVED ARXIV IDS:", file=sys.stderr)
         for aid in missing:

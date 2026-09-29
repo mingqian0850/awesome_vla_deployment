@@ -35,19 +35,6 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [evaluation, simulation, benchmark]
-  - id: robomimic-study
-    name: "What Matters in Learning from Offline Human Demonstrations"
-    url: "https://github.com/ARISE-Initiative/robomimic"
-    type: paper
-    what: >
-      Systematic study of which factors actually drive offline imitation-learning performance:
-      number and quality of demonstrations, observation space, and algorithm choice.
-    why: >
-      The most useful single reference when someone proposes 'collect more data' as the
-      solution. Read the ablations before you commit weeks of robot time.
-    maturity: production
-    verified: 2026-09
-    tags: [evaluation, data-quality, study]
   - id: eval-statistical-bounds
     name: "Statistical lower bounds on behavior-cloning success probability"
     url: "https://arxiv.org/abs/2405.05439"

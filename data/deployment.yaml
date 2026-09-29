@@ -278,6 +278,14 @@ entries:
       algorithms that change how chunks are generated and joined (RTC, FASTER, Legato), systems
       work that reduces single-inference cost, and learned/speculative methods that push average
       latency down once inference is already fast.
+      The wider course is organised around the claim that embodied AI's difficulty is the whole
+      system chain — perception, control, data, training, deployment, and failure feedback —
+      and it applies a five-category failure framework per lecture with post-mortems: vision,
+      action, timing, target pose, and data coverage. That is a **different axis from this
+      repo's troubleshooting section**, which is organised by symptom. Ours answers "what do I
+      see, and what is it"; theirs answers "which part of the system is implicated". Worth
+      reading both, and worth knowing that a category that never appears in your own
+      post-mortems is usually one you have not instrumented yet.
   - id: faster
     name: "FASTER: Rethinking Real-Time Flow VLAs"
     url: "https://arxiv.org/abs/2603.19199"
