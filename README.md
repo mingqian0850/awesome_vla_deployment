@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-148 entries · 58 production · 78 research · 8 toy · 4 abandoned
+152 entries · 58 production · 81 research · 9 toy · 4 abandoned
 
 </div>
 
@@ -188,6 +188,9 @@ Read this before adding anything. Most of the VLA space is already curated; this
   - *What it is:* Aimed at 'Training Pipeline and deployment' plus tools — conceptually the nearest predecessor to this repo.
   - *Why it matters here:* Worth reading as a cautionary example: the right idea, abandoned in 2024 at 7 stars. The lesson is that a list like this only survives if it is generated from data and checked by CI.
   - *Note:* No commits since 2024-06.
+- **[Resources that do not exist (do not cite these)](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #errata #non-existent #do-not-cite #trap
+  - *What it is:* Names that circulate in search results, summaries, and generated text but resolve to nothing. Confirmed 404 with a direct request: `github.com/simpler-env/SimplerEnv-Plus` (there is no "SimplerEnv-Plus"; the project is SimplerEnv, and LIBERO-Plus is a separate thing), and `github.com/rr-learning/real-robot-challenge`.
+  - *Why it matters here:* Recorded for the same reason `keon/awesome-physical-ai` is recorded: a reader will meet these names, and a plausible-looking dead end costs more time than an obviously missing one. "SimplerEnv-Plus" in particular is the kind of name that reads as a real successor and is easy to propagate into a citation list without checking. The general rule this repo enforces mechanically: **resolve it before you cite it.** `scripts/check_links.py` fails the build on an unresolvable URL, and `scripts/check_papers.py` verifies that an arXiv ID is the paper you claim it is, because a search snippet can attach arbitrary text to an identifier.
 
 
 ## Data — collection, annotation, cleaning, segmentation
@@ -605,6 +608,15 @@ Most labs evaluate ad hoc, then report point estimates from a handful of trials.
 - **[A 25x gap between how LIBERO is evaluated in papers and its default config](https://arxiv.org/abs/2506.01844)** — `paper` · `research` · verified 2026-09 · #libero #evaluation #reproduction #protocol #trials
   - *What it is:* Papers reporting LIBERO results commonly run 500 trials per suite across 3 seeds. LIBERO's own default configuration ships `n_eval: 20`.
   - *Why it matters here:* If you reproduce a published number with the default settings and get something worse, this is a plausible reason before your training recipe is. It is also the clearest illustration of why an evaluation protocol has to be reported rather than assumed: the same benchmark, the same checkpoint, and a 25x difference in evidence.
+- **[Score the Steps, Not Just the Goal — subgoal-level evaluation](https://arxiv.org/abs/2509.19524)** — `paper` · `research` · verified 2026-09 · #evaluation #subgoal #progress #statistics #per-phase
+  - *What it is:* Uses a VLM to evaluate progress at the subgoal level, turning one bit of information per rollout into a progress curve.
+  - *Why it matters here:* The highest-leverage change to a real-robot evaluation protocol in this list. A success rate from 30 trials is one number built from 30 bits, which is why it cannot resolve a five-point difference. A per-subgoal progress curve gives you many more observations per expensive trial — and it tells you *where* the policy fails, which is the thing you actually need in order to fix it. If you change one thing about how you evaluate, change this.
+- **[Failure taxonomies for manipulation — five groups, five different label sets](https://arxiv.org/abs/2512.01946)** — `paper` · `research` · verified 2026-09 · #failure-taxonomy #evaluation #planning-vs-execution #diagnosis #gap
+  - *What it is:* There is no community-standard failure taxonomy, and this is the evidence: several independent groups each invented their own. [Guardian](https://arxiv.org/abs/2512.01946) detects robotic planning and execution errors with VLMs and — importantly — separates the two, because planning errors and execution errors have different remedies. [Eval-Actions](https://arxiv.org/abs/2601.18723) scores fine-grained execution quality and, unusually, examines rater reliability. [ProTracer](https://arxiv.org/abs/2609.21369) diagnoses failures from proprioception alone, needing no extra camera or VLM compute — which matters when the monitor shares a GPU with the policy. [Visual Symbols](https://arxiv.org/abs/2512.02787) produces a human-readable failure representation that doubles as an annotation scheme. [REBOOT](https://arxiv.org/abs/2609.22591) supplies the recovery-side dataset and benchmark, on the hardest regime: precision assembly.
+  - *Why it matters here:* Use these as starting points rather than inventing your own labels from scratch — but do not expect them to agree. The actionable part is Guardian's split: when a rollout fails, "it chose the wrong thing to do" and "it did the right thing badly" call for completely different fixes, and collapsing them into one failure count is how teams end up collecting more data when the problem was the instruction. This is also why this repo does not publish a single canonical taxonomy: the field does not have one, and pretending otherwise would be exactly the kind of unearned confidence the provenance policy exists to prevent.
+- **[RoboTwin 2.0](https://robotwin-platform.github.io/)** — `benchmark` · `research` · verified 2026-09 · #benchmark #simulation #bimanual #domain-randomisation #robustness
+  - *What it is:* A bimanual manipulation benchmark with strong domain randomisation.
+  - *Why it matters here:* Fills the two weaknesses this repo keeps flagging in the popular sim benchmarks: LIBERO and SimplerEnv are largely single-arm and comparatively light on visual randomisation, so a policy can score well on them and still fail the first time the lighting changes. If you want a sim screen that has a chance of predicting deployment, bimanual coverage and randomisation strength are the two properties to select for.
 
 
 ## Counter-evidence — what did not work, and what stops working

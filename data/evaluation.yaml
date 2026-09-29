@@ -109,3 +109,63 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [libero, evaluation, reproduction, protocol, trials]
+  - id: score-the-steps
+    name: "Score the Steps, Not Just the Goal — subgoal-level evaluation"
+    url: "https://arxiv.org/abs/2509.19524"
+    type: paper
+    what: "Uses a VLM to evaluate progress at the subgoal level, turning one bit of information per rollout into a progress curve."
+    why: >
+      The highest-leverage change to a real-robot evaluation protocol in this list. A success
+      rate from 30 trials is one number built from 30 bits, which is why it cannot resolve a
+      five-point difference. A per-subgoal progress curve gives you many more observations per
+      expensive trial — and it tells you *where* the policy fails, which is the thing you
+      actually need in order to fix it. If you change one thing about how you evaluate, change
+      this.
+    maturity: research
+    verified: 2026-09
+    tags: [evaluation, subgoal, progress, statistics, per-phase]
+  - id: failure-taxonomy-cluster
+    name: "Failure taxonomies for manipulation — five groups, five different label sets"
+    url: "https://arxiv.org/abs/2512.01946"
+    type: paper
+    what: >
+      There is no community-standard failure taxonomy, and this is the evidence: several
+      independent groups each invented their own.
+      [Guardian](https://arxiv.org/abs/2512.01946) detects robotic planning and execution errors
+      with VLMs and — importantly — separates the two, because planning errors and execution
+      errors have different remedies.
+      [Eval-Actions](https://arxiv.org/abs/2601.18723) scores fine-grained execution quality and,
+      unusually, examines rater reliability.
+      [ProTracer](https://arxiv.org/abs/2609.21369) diagnoses failures from proprioception alone,
+      needing no extra camera or VLM compute — which matters when the monitor shares a GPU with
+      the policy.
+      [Visual Symbols](https://arxiv.org/abs/2512.02787) produces a human-readable failure
+      representation that doubles as an annotation scheme.
+      [REBOOT](https://arxiv.org/abs/2609.22591) supplies the recovery-side dataset and
+      benchmark, on the hardest regime: precision assembly.
+    why: >
+      Use these as starting points rather than inventing your own labels from scratch — but do
+      not expect them to agree. The actionable part is Guardian's split: when a rollout fails,
+      "it chose the wrong thing to do" and "it did the right thing badly" call for completely
+      different fixes, and collapsing them into one failure count is how teams end up
+      collecting more data when the problem was the instruction.
+      This is also why this repo does not publish a single canonical taxonomy: the field does
+      not have one, and pretending otherwise would be exactly the kind of unearned confidence
+      the provenance policy exists to prevent.
+    maturity: research
+    verified: 2026-09
+    tags: [failure-taxonomy, evaluation, planning-vs-execution, diagnosis, gap]
+  - id: robotwin2
+    name: "RoboTwin 2.0"
+    url: "https://robotwin-platform.github.io/"
+    type: benchmark
+    what: "A bimanual manipulation benchmark with strong domain randomisation."
+    why: >
+      Fills the two weaknesses this repo keeps flagging in the popular sim benchmarks: LIBERO
+      and SimplerEnv are largely single-arm and comparatively light on visual randomisation, so
+      a policy can score well on them and still fail the first time the lighting changes. If
+      you want a sim screen that has a chance of predicting deployment, bimanual coverage and
+      randomisation strength are the two properties to select for.
+    maturity: research
+    verified: 2026-09
+    tags: [benchmark, simulation, bimanual, domain-randomisation, robustness]

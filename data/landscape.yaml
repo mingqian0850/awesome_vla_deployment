@@ -199,3 +199,24 @@ entries:
     verified: 2026-09
     tags: [abandoned, prior-art]
     notes: "No commits since 2024-06."
+  - id: nonexistent-resources
+    name: "Resources that do not exist (do not cite these)"
+    url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
+    type: gap
+    what: >
+      Names that circulate in search results, summaries, and generated text but resolve to
+      nothing. Confirmed 404 with a direct request: `github.com/simpler-env/SimplerEnv-Plus`
+      (there is no "SimplerEnv-Plus"; the project is SimplerEnv, and LIBERO-Plus is a separate
+      thing), and `github.com/rr-learning/real-robot-challenge`.
+    why: >
+      Recorded for the same reason `keon/awesome-physical-ai` is recorded: a reader will meet
+      these names, and a plausible-looking dead end costs more time than an obviously missing
+      one. "SimplerEnv-Plus" in particular is the kind of name that reads as a real successor
+      and is easy to propagate into a citation list without checking.
+      The general rule this repo enforces mechanically: **resolve it before you cite it.**
+      `scripts/check_links.py` fails the build on an unresolvable URL, and
+      `scripts/check_papers.py` verifies that an arXiv ID is the paper you claim it is, because
+      a search snippet can attach arbitrary text to an identifier.
+    maturity: toy
+    verified: 2026-09
+    tags: [errata, non-existent, do-not-cite, trap]
