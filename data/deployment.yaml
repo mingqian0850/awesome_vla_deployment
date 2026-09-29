@@ -249,3 +249,58 @@ entries:
     maturity: research
     verified: 2026-09
     tags: [ros2, integration, real-time, bridge]
+  - id: xbotics-ch13
+    name: "Xbotics 具身智能教程 第13讲 — real-time VLA inference (Chinese)"
+    url: "https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/13-VLA%E5%89%8D%E6%B2%BF.md"
+    type: blog
+    what: >
+      A long-form Chinese lecture treating real-time inference as "the first deployment
+      blocker". It defines the three latencies separately — time to first action, end-to-end
+      perception-to-action latency, and chunk-boundary stall — then walks the RTC derivation
+      with worked numbers from the paper: pi0.5 at 50 Hz with 5 denoising steps needs 76 ms per
+      inference against a 20 ms control period, the prediction/execution/frozen regions and how
+      they are sized, the ~28% inference cost of guidance (97 ms versus 76 ms), a rejection-
+      sampling alternative measured at 223 ms, and the +100 ms / +200 ms latency-robustness
+      results including temporal ensembling tripping a protective stop. It closes on the
+      limitation RTC does not address: TTFA, the reaction latency of the frozen window.
+    why: >
+      The most complete published decomposition of the VLA latency problem found in any
+      language, and it is the reason the gap in this repo is narrower than we first claimed:
+      the *framework* for decomposing the budget does exist, in Chinese, and it is good. What
+      is still missing is filled-in, per-stage, measured numbers on a specific stack — which
+      is what docs/40-optimization-matrix.md asks contributors to produce. Read this before
+      reading the RTC paper; the derivation is clearer than the paper's.
+    maturity: research
+    verified: 2026-09
+    tags: [chinese, latency, rtc, ttfa, derivation, deployment]
+    notes: >
+      The chapter also argues the field needs three complementary layers rather than one fix —
+      algorithms that change how chunks are generated and joined (RTC, FASTER, Legato), systems
+      work that reduces single-inference cost, and learned/speculative methods that push average
+      latency down once inference is already fast.
+  - id: faster
+    name: "FASTER: Rethinking Real-Time Flow VLAs"
+    url: "https://arxiv.org/abs/2603.19199"
+    type: paper
+    what: "Reconsiders the denoising schedule of flow-matching VLAs specifically to reduce reaction latency."
+    why: >
+      Directly attacks the limit RTC leaves in place. Under a fixed denoising schedule, the
+      action expert's N steps dominate latency and the reaction time is roughly
+      `L + (s/2)·T_c` regardless of how smoothly chunks are joined. If your task is dynamic
+      rather than merely long, this is the relevant axis, not chunk-boundary smoothness.
+    maturity: research
+    verified: 2026-09
+    tags: [ttfa, latency, flow-matching, denoising-schedule]
+  - id: legato
+    name: "Legato: Learning Native Continuation for Action Chunking Flow Policies"
+    url: "https://arxiv.org/abs/2602.12978"
+    type: paper
+    what: "Learns the continuation of an action chunk natively, so a chunk can be extended instead of requiring a full re-inference."
+    why: >
+      A learned route to the same goal as RTC's inference-time guidance: reduce how often you pay
+      full inference cost, rather than patching the seams after the fact. Note the tradeoff
+      against RTC — guidance is training-free and costs ~28% extra inference, while a learned
+      continuation requires a training run but changes the cost structure itself.
+    maturity: research
+    verified: 2026-09
+    tags: [chunking, continuation, training, latency]

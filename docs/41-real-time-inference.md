@@ -8,14 +8,31 @@ hardware. A control loop wants a new command every few milliseconds. **Action ch
 to bridge that gap**, and understanding the arithmetic tells you which of the three execution
 strategies you need before you write any code.
 
-## 1. The notation
+## 1. Three latencies, not one
+
+Three different quantities get called "the latency", and conflating them is why two teams can
+measure the same system and disagree. Name the one you mean.
+
+| Metric | Definition | When it is the binding constraint |
+|---|---|---|
+| **Time to first action (TTFA)** | new observation arrives → the first *modifiable* action is dispatched | Dynamic tasks — ping-pong, conveyor sorting, anything where the opportunity window closes |
+| **End-to-end latency** | sensor sampling → preprocessing → inference → postprocessing → dispatch | Control-loop feasibility and motion quality |
+| **Chunk-boundary stall** | one chunk finishes while the next is not computed yet, so the robot waits | Every chunked policy, unless inference is decoupled from execution |
+
+The third is what people report as "the robot moves in bursts and pauses". The first is what
+actually limits you on fast tasks, and it stays invisible if you only measure the third. A
+system can have zero chunk-boundary stall and still be too slow to react — see §5.
+
+## 2. The notation
 
 | Symbol | Meaning | Typical value |
 |---|---|---|
 | `f_c` | control frequency | 50 Hz |
 | `T_c = 1/f_c` | control period | 20 ms |
-| `H` | action chunk horizon, in steps | 50 |
-| `L` | inference latency, observation captured → chunk returned | 100 ms |
+| `H` | prediction horizon: action chunk length, in steps | 50 |
+| `s` | execution horizon: steps actually executed per inference | ~H/2 |
+| `L` | inference latency, observation captured → chunk returned | 76 ms |
+| `d` | inference latency expressed in control steps, `L / T_c` | ~4 |
 | `D_c = H / f_c` | wall-clock duration of one chunk | 1.0 s |
 
 `L` is measured end to end, and the honest definition includes everything: camera exposure,
@@ -23,7 +40,7 @@ image transfer, preprocessing, tokenisation, denoising steps, and the trip back 
 actuator. Teams routinely quote the denoising loop alone and then wonder why the robot is
 sluggish.
 
-## 2. What `L` actually is, on real hardware
+## 3. What `L` actually is, on real hardware
 
 Before you measure your own, calibrate your expectations. These are reported figures, not a
 controlled comparison — different harnesses, camera counts and denoising steps make most
@@ -51,7 +68,7 @@ Three things follow, and they are worth more than the individual numbers:
 3. **On Jetson Orin, no stack in the vendor table gets below 173 ms.** The hardware is the
    binding constraint before your code is. Decide that before you spend a month profiling.
 
-## 3. The feasibility condition
+## 4. The feasibility condition
 
 > **You can re-plan before the buffer empties iff `L < D_c`.**
 
@@ -63,7 +80,7 @@ policy will help.
 The margin is also your robustness budget. Wi-Fi jitter, a thermal-throttled GPU, or one slow
 frame can consume it. **Aim for `L < D_c / 3` unless you have a specific reason not to.**
 
-## 4. The observation-age equation — the part people miss
+## 5. The observation-age equation — the part people miss
 
 Chunk k is computed from an observation taken at time `t_0`, but action `k` is executed at
 `t_0 + L + k·T_c`. So:
@@ -85,7 +102,7 @@ fix: it improves the feasibility margin from §2 while making the staleness wors
 pressures pull in opposite directions, and the correct `H` is where they balance — which
 depends on how fast your task evolves, not on a default from a config file.
 
-## 5. Three execution strategies
+## 6. Three execution strategies
 
 ### Synchronous (execute the whole chunk, then re-plan)
 
@@ -93,6 +110,13 @@ depends on how fast your task evolves, not on a default from a config file.
 - **Good for**: slow manipulation, fixed-base arms, tasks where the world does not move.
 - **Fails as**: visible stop-start motion when `L ≈ D_c`, and a discontinuity at each chunk
   boundary, because chunk *n+1* was computed without knowing what chunk *n* actually executed.
+
+Measured, in the RTC paper's own setting: pi0.5 at 50 Hz control with 5 denoising steps takes
+**76 ms per inference** while the controller consumes an action every 20 ms. One inference
+therefore occupies about four control steps (`d ≈ 4`, and closer to 6 once you add 10–20 ms of
+LAN communication). The action queue can only drain smoothly because a single inference
+produced an entire chunk — so the moment a chunk runs out before the next one lands, you get a
+visible stall at every boundary.
 
 ### Temporal ensembling (blend overlapping chunks)
 
@@ -102,22 +126,60 @@ depends on how fast your task evolves, not on a default from a config file.
   synchronous loop.
 - **Costs**: `H×` the inference compute if you re-plan every step. It also averages across
   predictions made from different observations, which blurs fast motion.
-- **Note**: averaging is exactly the operation that a multimodal policy dislikes. If your
-  policy is already averaging modes, ensembling makes it worse.
+- **This one can fail badly under latency.** In the RTC paper's latency-robustness test,
+  injecting +100 ms of extra delay (`d ≈ 11`) made temporal ensembling trip a protective stop,
+  while synchronous inference degraded gracefully and RTC was almost unaffected. Averaging two
+  paths that have diverged produces a trajectory that goes *between* them — which, in the
+  walk-through-the-middle test, means straight into the obstacle.
+- **Note**: averaging is exactly the operation a multimodal policy dislikes. If your policy is
+  already averaging modes, ensembling makes it worse.
 
 ### Asynchronous / RTC
 
-- Keep inference running continuously in a separate process or thread, and let the control
-  loop consume whatever is ready. Real-Time Chunking goes further and conditions the new chunk
-  on the actions already committed to, so the new plan joins smoothly instead of jumping.
-- **Good for**: tight control rates, slow inference, dynamic tasks. This is the direction the
-  field has moved, and LeRobot now ships Sync and RTC strategies with
-  `execution_horizon`, `max_guidance_weight` and `prefix_attention_schedule`
-  ([docs](https://huggingface.co/docs/lerobot/en/inference)).
-- **Costs**: genuine added complexity — you now have two clocks, a buffer, and a policy
-  question about what to do when inference overruns. Budget for it.
+- Keep inference running continuously in a separate process or thread, and let the control loop
+  consume whatever is ready. RTC goes further and conditions the new chunk on the actions
+  already committed to, so the new plan joins smoothly instead of jumping — conceptually
+  in-painting: the already-executed prefix is fixed, the in-flight window is partly constrained,
+  the future is free.
+- **Good for**: eliminating chunk-boundary stalls, which is the failure mode most people
+  actually have.
+- **Costs**: **inference is about 28% slower** (97 ms versus 76 ms in the RTC paper) because
+  guidance needs an extra backward pass. Comparable rejection-sampling approaches are far worse
+  — one published comparison measured 223 ms per round, about 2.3× RTC, needing an extra weak
+  policy checkpoint and still performing worse at high latency.
+- **Implementation detail that is easy to get wrong**: the inference thread should estimate the
+  *next* delay conservatively, taking the maximum of the last few measurements. If you
+  underestimate `d`, the frozen region expires before the new chunk arrives and the whole
+  three-region partition is invalid. Overestimating costs you a little responsiveness;
+  underestimating costs you correctness.
 
-## 6. Measure it properly
+### The half RTC does not solve
+
+This is the part that is easy to miss when you read the RTC headline: **it addresses chunk
+smoothness, not reaction time.** The `d` frozen steps are locked. If the object moves or the
+grasp fails during that window, those actions cannot change. On a fast task the bottleneck is
+not smoothness, it is **TTFA** — how long until you can emit an action that reflects what you
+just saw.
+
+Roughly, for an asynchronous policy with execution horizon `s`:
+
+```
+reaction time ≈ L + (s / 2) · T_c
+```
+
+where the `s/2` is the expected position of the event within the execution window. With
+`L = 76 ms`, `s = 10`, `T_c = 20 ms` that is roughly 176 ms. On a task where the opportunity
+window is a few hundred milliseconds, most of your budget is gone before you can respond at
+all — and no amount of chunk-smoothing helps, because the limit is the denoising loop itself.
+
+The published attacks on that number are algorithmic, not systems-level: reschedule the
+denoising steps so the action expert stops dominating latency
+([FASTER](https://arxiv.org/abs/2603.19199)), or learn the continuation so a chunk can be
+extended without a full re-inference ([Legato](https://arxiv.org/abs/2602.12978)). Worth
+reading before you assume a faster GPU is the answer — but **measure your own TTFA first**,
+because if you have never measured it you do not know whether you have this problem.
+
+## 7. Measure it properly
 
 Instrument five timestamps on every cycle and log them as a series:
 
@@ -136,7 +198,7 @@ Then compute, for every cycle: the feasibility margin `D_c − L`, and the age o
 executed action. If either crosses a threshold, the problem is the timing architecture, not
 the model.
 
-## 7. Pitfalls that show up as "the model is bad"
+## 8. Pitfalls that show up as "the model is bad"
 
 - **Queueing observations.** If the policy lags and you enqueue frames, you build a backlog and
   the robot acts on ever-older data, then behaves as if it is lagging the world by seconds.
@@ -155,7 +217,7 @@ the model.
   second-old plans, no amount of data fixes it. Fix the architecture first, then evaluate the
   model on its own merits.
 
-## 8. Quick reference
+## 9. Quick reference
 
 ```
 Feasibility:        L  <  D_c / 3          (D_c = H / f_c)
@@ -180,3 +242,16 @@ margin         = 1.000 / 0.400    = 2.5x         -> jitter will eat this
 At `H = 10` it becomes `0.200 / 0.400 = 0.5×` — the buffer starves every cycle. At that point
 the choice is: raise `H`, cut `L` (quantisation, distillation, smaller visual encoder), or go
 asynchronous. Anything else is guessing.
+
+---
+
+## Sources
+
+- Three-latency decomposition, the RTC derivation and worked numbers, the 28% guidance cost,
+  the 223 ms rejection-sampling comparison, and the latency-robustness results:
+  [Xbotics 具身智能教程 第13讲](https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/13-VLA%E5%89%8D%E6%B2%BF.md)
+  (Chinese), which works through [RTC](https://neurips.cc/virtual/2025/loc/san-diego/poster/117747).
+- Real-hardware latency figures and the GR00T optimisation table: see
+  [Deployment benchmarks](../README.md#deployment-benchmarks--measured-not-cited).
+- The batch-1 quantisation negative result and the latency-versus-staleness trade:
+  [embodied-efficiency](https://github.com/LaelaZorana/embodied-efficiency).

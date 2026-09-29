@@ -174,16 +174,23 @@ entries:
     url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
     type: gap
     what: >
-      Still not published. The numbers above give you the model stage, but nobody publishes a
-      complete budget: camera exposure, transport, host capture, resize and uint8 conversion,
-      network RTT, preprocessing, ViT, LLM prefix, K denoising steps, postprocessing, queue
-      merge, bus latency, servo/IK, actuator settling.
+      Narrower than it first appeared. The *framework* for decomposing the budget does exist —
+      a Chinese lecture defines the three latencies separately (time to first action,
+      end-to-end, chunk-boundary stall) and works through the RTC derivation with real numbers.
+      What is missing is a **filled-in, measured** budget on a named stack: camera exposure,
+      transport, host capture, resize and uint8 conversion, network RTT, preprocessing, ViT,
+      LLM prefix, K denoising steps, postprocessing, queue merge, bus latency, servo/IK,
+      actuator settling — measured, not enumerated.
     why: >
       Both RTC's `inference_delay` and LeRobot's chunk thresholds *require* a per-step delay
-      estimate, and both sets of docs tell you to compute it without telling you how. A worked
-      example on one popular stack (π0.5, three cameras, SO-101 or UR5e) would immediately
+      estimate, and both sets of docs tell you to compute it without telling you how. A measured
+      example on one popular stack (pi0.5, three cameras, SO-101 or UR5e) would immediately
       become the reference this field lacks. Partial ingredients exist: Jetson-PI's per-module
-      table and FlashRT's separated harness numbers.
+      table, FlashRT's separated harness numbers, and the framework above.
+    notes: >
+      We deliberately narrowed this from "nobody publishes the framework" to "nobody publishes
+      filled-in numbers", after finding the framework. An over-broad gap claim damages a curated
+      index as much as a dead link does.
     maturity: toy
     verified: 2026-09
     tags: [gap, latency, budget, wanted]
