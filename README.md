@@ -665,6 +665,11 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 
 `severity: high` · `frequency: extremely common`
 
+**Cause 0 — The inference loop only consumes index 0 of the action chunk — a harness bug that is indistinguishable from a model failure.**
+
+- **Test:** Read your own rollout loop before you touch the model. Print the shape of what the policy returns and the shape of what you send to the robot. A policy that returns a chunk of shape (H, action_dim) — for example GR00T returns (16, 7) — is trivially mis-consumed by a loop that indexes only the first row, and the resulting behaviour is a robot that performs one step of motion and then re-plans. From the outside that is the same symptom as every cause below it, so this costs five minutes to rule out and can save weeks of retraining.
+- **Fix:** Decide the execution depth explicitly and write it down as a number, then verify the number of commands actually sent per inference against it. Be aware that the right depth is a tuned hyperparameter rather than a constant, and that published evidence points both ways: on one benchmark executing 16 steps beat executing fewer (90% to 96%), while for one model the full 50-step chunk was the worst setting tested — 51.8% against 82.8% at an execution depth of 10. So do not simply "execute everything"; sweep it, and treat the sweep as part of your evaluation rather than as plumbing.
+
 **Cause 1 — Phase aliasing — the same observation requires different actions in different phases, and nothing in the input says which phase you are in.**
 
 - **Test:** Take each frame, find its K nearest neighbours in state space, and measure how spread out those neighbours are along normalised episode time. A mean spread above ~0.10 means states recur across phases. Run `python scripts/diag_dataset.py <dataset> --n-phases 3`.
@@ -673,7 +678,7 @@ Read the causes in order. They are ranked by how often they turn out to be the a
 **Cause 2 — A dead proprioceptive state channel — the policy is effectively vision-only.**
 
 - **Test:** Print per-dimension mean/std of `observation.state`; a constant or all-zero dimension is dead. Then ablate the state at inference: replace it with zeros and with another frame's state, and measure how far the predicted action chunk moves relative to the natural cross-observation variation. `python scripts/diag_policy.py --dataset <ds> --config <cfg> --test ablate`.
-- **Fix:** pi0.5 feeds the state as discretised tokens into the VLM rather than as a continuous input, so dim order, scale and the q01/q99 statistics must match the checkpoint. Note that this behaviour is *derived*, not fixed: in openpi, `discrete_state_input` defaults to `None` and is resolved as `discrete_state_input = pi05`, so pi0.5 turns it on and pi0 turns it off — but `pi05_libero` explicitly sets it to `False` because LIBERO has no proprioceptive state. Read the flag from the config rather than assuming. If enough state dimensions are dead or mis-scaled, the tokens are constant and the phase becomes unobservable. The mechanism is concrete: the state is binned into 256 buckets over the normalised [-1, 1] range, so bad normalisation statistics make every dimension saturate at bin 0 or bin 255 — turning the state into a *constant string* that carries no information at all while still being present in the input.
+- **Fix:** pi0.5 feeds the state as discretised tokens into the VLM rather than as a continuous input, so dim order, scale and the q01/q99 statistics must match the checkpoint. Note that this behaviour is *derived*, not fixed: in openpi, `discrete_state_input` defaults to `None` and is resolved as `discrete_state_input = pi05`, so pi0.5 turns it on and pi0 turns it off — but `pi05_libero` explicitly sets it to `False` because LIBERO has no proprioceptive state. That means two people with identical robots can get different behaviour depending on which recipe they copied — read the flag out of the config rather than assuming, and check it when a recipe transfer does not behave as expected. If enough state dimensions are dead or mis-scaled, the tokens are constant and the phase becomes unobservable. The mechanism is concrete: the state is binned into 256 buckets over the normalised [-1, 1] range, so bad normalisation statistics make every dimension saturate at bin 0 or bin 255 — turning the state into a *constant string* that carries no information at all while still being present in the input.
 - **Source:** <https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/models/pi0_config.py>
 
 **Cause 3 — The action expert has collapsed to the unconditional mean action.**
@@ -846,7 +851,12 @@ Sources: <https://mlanthology.org/corl/2025/jain2025corl-enabling/> · <https://
 - **Fix:** Match the mapping to the checkpoint you are comparing against, and state which one you used when reporting results. Two runs with different mappings are not comparable.
 - **Source:** <https://huggingface.co/docs/lerobot/en/pi05>
 
-**Cause 3 — Statistics cached inside an existing checkpoint override newly computed dataset statistics.**
+**Cause 3 — A CLI argument was silently overridden by a namespaced default, so the value you passed never reached the optimizer or the trainer.**
+
+- **Test:** Print the constructed config after argument parsing and compare it against what you passed on the command line. LeRobot has nested optimizer settings where the path matters — a bare `--optimizer.lr` can be shadowed by the policy-namespaced form, so the learning rate that actually trains is not the one on your command line. Related traps in the same family: the launcher matters (`accelerate` rather than `torchrun`), and distributed data parallel does **not** reduce per-GPU memory the way people assume it does — it replicates the model, so it speeds up training without making the model fit.
+- **Fix:** Treat the parsed config, not your command line, as the ground truth, and print it once at the start of every run. This is the same discipline as reading `num_learnable_params` instead of trusting your PEFT flags: in this ecosystem, the configuration you intended and the configuration that ran are frequently different, and nothing errors when they are.
+
+**Cause 4 — Statistics cached inside an existing checkpoint override newly computed dataset statistics.**
 
 - **Test:** Recompute the dataset statistics and check whether the loaded checkpoint's stored statistics changed.
 - **Fix:** They will not — LeRobot states that statistics already saved inside an existing checkpoint are not affected by recomputing dataset stats. Start from a checkpoint without embedded statistics, or expect the stored ones to win.
