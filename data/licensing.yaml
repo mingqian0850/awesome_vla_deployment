@@ -1,0 +1,83 @@
+section: "Licensing — what you are allowed to ship"
+order: 60
+description: >
+  No other list in this space covers this, and for a deployment repo it is first-order: a
+  training pipeline that produces a checkpoint you are not allowed to deploy is a failed
+  pipeline, regardless of how well it works.
+
+  Every licence claim below was read from the Hugging Face API rather than from a
+  documentation page, because the two disagree — see the first entry.
+entries:
+  - id: pi0-license-contradiction
+    name: "The pi0 and pi0.5 checkpoints are not Apache 2.0, whatever the docs say"
+    url: "https://huggingface.co/api/models/lerobot/pi05_base"
+    type: docs
+    what: >
+      Verified directly against the Hub API: `lerobot/pi0_base` and `lerobot/pi05_base` both
+      return `cardData.license = "gemma"` and carry the tag `license:gemma`.
+      LeRobot's own documentation for both models states the opposite — "This model follows the
+      **Apache 2.0 License**, consistent with the original OpenPI repository" — on the π₀ page
+      and again on the π₀.₅ page.
+      For comparison, verified the same way: `lerobot/smolvla_base` is `apache-2.0`,
+      `openvla/openvla-v01-7b` is `mit`, and `RogerQi/PH2D` is `mit`.
+    why: >
+      π₀ and π₀.₅ are the checkpoints most readers of this repo start from, and the licence on
+      the weights is not the licence the documentation implies. The Gemma licence carries use
+      restrictions that Apache 2.0 does not, and the difference is exactly the kind that matters
+      at the moment you try to ship something rather than the moment you start experimenting.
+      **Check this before you invest a week of fine-tuning, not after.** If your deployment
+      cannot accept the Gemma terms, the practical alternatives with verifiable permissive
+      licences are SmolVLA or OpenVLA — a materially different starting point that is worth
+      knowing early.
+      We are not asserting which licence is legally correct, and the discrepancy may be a
+      packaging error that gets fixed. We are asserting that the two sources disagree and that
+      you should resolve it for your own use case before building on it.
+    maturity: production
+    verified: 2026-09
+    tags: [licensing, pi0, pi05, gemma, deployment-blocker, contradiction]
+  - id: verify-license-from-api
+    name: "Verify licences from the Hub API, never from a documentation page"
+    url: "https://huggingface.co/api/models/lerobot/pi05_base"
+    type: docs
+    what: >
+      The Hugging Face API exposes the declared licence as machine-readable fields
+      (`cardData.license`, and a `license:*` tag) for every model and dataset:
+      `https://huggingface.co/api/models/<repo>` and `.../datasets/<repo>`.
+    why: >
+      This is the same rule as the other provenance entries in this repo, applied to the field
+      where being wrong is most expensive: **go one level closer to the artifact than the page
+      that describes it.** A documentation page is a claim about a model; the API field is the
+      model's own declaration.
+      Two practical notes. A dataset or model card with **no** declared licence is not the same
+      as a permissive one — treat an absent `license` field as unresolved, not as free to use.
+      And a repo's *code* licence is not its *weights* licence: openpi's repository is
+      Apache-2.0 while the checkpoints it ships are not, and conflating the two is an easy and
+      consequential mistake.
+    maturity: production
+    verified: 2026-09
+    tags: [licensing, api, verification, provenance, rule]
+  - id: dataset-license-spectrum
+    name: "Dataset licences range from MIT to no-derivatives, and the restrictive ones are not obvious"
+    url: "https://huggingface.co/api/datasets/RogerQi/PH2D"
+    type: gap
+    what: >
+      The spread across the datasets this repo indexes is wide, and it does not correlate with
+      how prominently a dataset is promoted. Verified permissively: `RogerQi/PH2D` is MIT, and
+      BridgeData V2 is CC BY 4.0 — the two cleanest options for commercial work. Verified
+      restrictively: **EgoDex is CC-BY-NC-ND**, where the no-derivatives clause blocks
+      redistributing a dataset you built from it, which is a real obstacle for anyone producing
+      derived data. Reported but not independently confirmed here: the AgiBot stacks are
+      CC BY-NC-SA 4.0, DexVLA is CC BY-NC, and RH20T uses a two-tier commercial/non-commercial
+      licence.
+    why: >
+      "Non-commercial" is easy to spot and "no derivatives" is not, yet the second is the one
+      that breaks a data pipeline: you can use EgoDex to train, but you may not be able to
+      release the dataset you built on top of it. Anyone assembling a mixture for a product
+      needs to check the no-derivatives clauses specifically rather than scanning for
+      "non-commercial" and moving on.
+      Treat the unconfirmed entries as leads to check, not as facts — that is the same standard
+      the rest of this repo holds itself to, and licences are a domain where a confident wrong
+      answer is worse than an explicit unknown.
+    maturity: research
+    verified: 2026-09
+    tags: [licensing, datasets, no-derivatives, commercial, gap]

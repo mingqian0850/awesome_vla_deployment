@@ -98,6 +98,7 @@ The hand-written pages, where the parts that no link can give you live:
 | trying to get a number you can trust | [Evaluation](#evaluation) and [Optimisation matrix](docs/40-optimization-matrix.md) |
 | looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — documented gaps with reasons |
 | about to conclude your data is the problem | [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) — nine documented failures, including one where more data was explicitly not the fix |
+| choosing a base model or dataset to build on | [Licensing](#licensing--what-you-are-allowed-to-ship) — check this before a week of fine-tuning, not after |
 
 ---
 

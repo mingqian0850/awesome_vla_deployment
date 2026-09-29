@@ -46,6 +46,18 @@ robot, not at your desk.
 - [ ] Human takeover arbitration is explicit, and was rehearsed
 - [ ] Someone has stood next to the robot and watched a **deliberate** policy failure
 
+## Licensing — check this before you invest, not before you ship
+
+- [ ] **Licence of every checkpoint you build on, read from the Hub API** rather than from a
+      documentation page. `lerobot/pi0_base` and `lerobot/pi05_base` return `gemma` from the API
+      while LeRobot's own docs for both state Apache 2.0 — resolve that for your use case before
+      you fine-tune, not after
+- [ ] **Licence of every dataset in your mixture**, checking specifically for
+      **no-derivatives** clauses, which break derived-data releases in a way
+      "non-commercial" does not
+- [ ] A card with **no declared licence** treated as unresolved, not as permissive
+- [ ] Code licence and weights licence treated as separate questions
+
 ## Reproducibility
 
 - [ ] Checkpoint, calibration file, config and code revision are bound together in one

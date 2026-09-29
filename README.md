@@ -9,7 +9,7 @@ training recipes with numbers; and the deployment engineering — latency, chunk
 quantisation, edge hardware, safety layers — that decides whether any of it works outside
 the lab.
 
-167 entries · 65 production · 88 research · 10 toy · 4 abandoned
+171 entries · 67 production · 89 research · 11 toy · 4 abandoned
 
 </div>
 
@@ -98,6 +98,7 @@ The hand-written pages, where the parts that no link can give you live:
 | trying to get a number you can trust | [Evaluation](#evaluation) and [Optimisation matrix](docs/40-optimization-matrix.md) |
 | looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — documented gaps with reasons |
 | about to conclude your data is the problem | [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) — nine documented failures, including one where more data was explicitly not the fix |
+| choosing a base model or dataset to build on | [Licensing](#licensing--what-you-are-allowed-to-ship) — check this before a week of fine-tuning, not after |
 
 ---
 
@@ -111,6 +112,7 @@ The hand-written pages, where the parts that no link can give you live:
 - [Safety and runtime monitoring](#safety-and-runtime-monitoring)
 - [Deployment benchmarks — measured, not cited](#deployment-benchmarks--measured-not-cited)
 - [Evaluation](#evaluation)
+- [Licensing — what you are allowed to ship](#licensing--what-you-are-allowed-to-ship)
 - [Counter-evidence — what did not work, and what stops working](#counter-evidence--what-did-not-work-and-what-stops-working)
 - [Troubleshooting — symptom to root cause to fix](#troubleshooting--symptom-to-root-cause-to-fix)
   - [The policy executes the first sub-task of a chained task, then stalls or](#the-policy-executes-the-first-sub-task-of-a-chained-task-then-stalls-or-repeats-it--regardless-of-the-initial-state)
@@ -621,6 +623,9 @@ Latency and quantisation numbers that named hardware actually produced. Every fi
   - *What it is:* Narrower than it first appeared. The academic treatment exists and names the failure mode precisely: a latency-resilient orchestration framework describes how network latency and jitter "can severely destabilize the system, causing command starvation and unsafe physical execution", and there is work on edge-cloud split inference and on deciding what runs where under compute pressure. What is still missing is the **operational** half: a post-mortem from a shipped robot reporting jitter distributions, dropped-frame rates, reconnect behaviour, and what the policy actually did during a two-second stall mid-chunk.
   - *Why it matters here:* This is a safety question disguised as a networking question. The answer should be a defined behaviour — decelerate to a stop along a safe path — and right now it is usually whatever the framework happens to do, which is frequently "keep executing the stale chunk". Papers tell you the problem is real; nobody tells you what their robot did.
   - *Note:* We deliberately rewrote this after finding the academic work. The original claim that the problem was undocumented was too broad, and an over-broad gap claim damages a curated index as much as a dead link does.
+- **[GAP — almost no VLA training framework documents a deployment path](https://github.com/mingqian0850/awesome_vla_deployment/issues)** — `gap` · `toy` · verified 2026-09 · #gap #export #tensorrt #onnx #ros #framework-selection
+  - *What it is:* A survey of the 2024-2025 academic VLA cluster found that **zero repositories document ONNX or TensorRT export, and zero document ROS integration**. The exceptions are narrow: GR00T N1.7 ships a real exported path with measured rates (about 35.9 Hz on an H100, 12.4 Hz on AGX Thor, 6.6 Hz on Orin with TensorRT), and CogACT reports roughly 5.5 Hz. openpi's own documentation describes "0.5-1 s latency per chunk" as normal.
+  - *Why it matters here:* This is the single most consequential gap for anyone choosing a framework, and it is invisible until too late: you can pick a training framework, spend a week fine-tuning, and only then discover there is no supported way to hit your control rate. The framework comparison tables that exist rank models by success rate on benchmarks, not by whether the output can be deployed at all. Practical consequence: **decide your control-rate requirement first, then check the framework's export story before you commit**, not after. And read the published latency rather than assuming a faster GPU closes the gap — see [docs/41](../docs/41-real-time-inference.md) for the arithmetic.
 
 
 ## Evaluation
@@ -664,6 +669,21 @@ Most labs evaluate ad hoc, then report point estimates from a handful of trials.
 - **[Three different 'official' LIBERO evaluation protocols](https://arxiv.org/abs/2506.01844)** — `paper` · `research` · verified 2026-09 · #libero #evaluation #protocol #reproduction #trials
   - *What it is:* The same benchmark, three conventions: papers reporting LIBERO results commonly run 500 trials per suite across 3 seeds; LIBERO's own default configuration ships `n_eval: 20`; and the repository's initial-state set contains 50 states.
   - *Why it matters here:* Before concluding that your reproduction failed, check which of the three you are using. A 25x difference in evidence between two people who both say "we evaluated on LIBERO" is the clearest possible argument for reporting the protocol rather than naming the benchmark.
+
+
+## Licensing — what you are allowed to ship
+
+No other list in this space covers this, and for a deployment repo it is first-order: a training pipeline that produces a checkpoint you are not allowed to deploy is a failed pipeline, regardless of how well it works. Every licence claim below was read from the Hugging Face API rather than from a documentation page, because the two disagree — see the first entry.
+
+- **[The pi0 and pi0.5 checkpoints are not Apache 2.0, whatever the docs say](https://huggingface.co/api/models/lerobot/pi05_base)** — `docs` · `production` · verified 2026-09 · #licensing #pi0 #pi05 #gemma #deployment-blocker #contradiction
+  - *What it is:* Verified directly against the Hub API: `lerobot/pi0_base` and `lerobot/pi05_base` both return `cardData.license = "gemma"` and carry the tag `license:gemma`. LeRobot's own documentation for both models states the opposite — "This model follows the **Apache 2.0 License**, consistent with the original OpenPI repository" — on the π₀ page and again on the π₀.₅ page. For comparison, verified the same way: `lerobot/smolvla_base` is `apache-2.0`, `openvla/openvla-v01-7b` is `mit`, and `RogerQi/PH2D` is `mit`.
+  - *Why it matters here:* π₀ and π₀.₅ are the checkpoints most readers of this repo start from, and the licence on the weights is not the licence the documentation implies. The Gemma licence carries use restrictions that Apache 2.0 does not, and the difference is exactly the kind that matters at the moment you try to ship something rather than the moment you start experimenting. **Check this before you invest a week of fine-tuning, not after.** If your deployment cannot accept the Gemma terms, the practical alternatives with verifiable permissive licences are SmolVLA or OpenVLA — a materially different starting point that is worth knowing early. We are not asserting which licence is legally correct, and the discrepancy may be a packaging error that gets fixed. We are asserting that the two sources disagree and that you should resolve it for your own use case before building on it.
+- **[Verify licences from the Hub API, never from a documentation page](https://huggingface.co/api/models/lerobot/pi05_base)** — `docs` · `production` · verified 2026-09 · #licensing #api #verification #provenance #rule
+  - *What it is:* The Hugging Face API exposes the declared licence as machine-readable fields (`cardData.license`, and a `license:*` tag) for every model and dataset: `https://huggingface.co/api/models/<repo>` and `.../datasets/<repo>`.
+  - *Why it matters here:* This is the same rule as the other provenance entries in this repo, applied to the field where being wrong is most expensive: **go one level closer to the artifact than the page that describes it.** A documentation page is a claim about a model; the API field is the model's own declaration. Two practical notes. A dataset or model card with **no** declared licence is not the same as a permissive one — treat an absent `license` field as unresolved, not as free to use. And a repo's *code* licence is not its *weights* licence: openpi's repository is Apache-2.0 while the checkpoints it ships are not, and conflating the two is an easy and consequential mistake.
+- **[Dataset licences range from MIT to no-derivatives, and the restrictive ones are not obvious](https://huggingface.co/api/datasets/RogerQi/PH2D)** — `gap` · `research` · verified 2026-09 · #licensing #datasets #no-derivatives #commercial #gap
+  - *What it is:* The spread across the datasets this repo indexes is wide, and it does not correlate with how prominently a dataset is promoted. Verified permissively: `RogerQi/PH2D` is MIT, and BridgeData V2 is CC BY 4.0 — the two cleanest options for commercial work. Verified restrictively: **EgoDex is CC-BY-NC-ND**, where the no-derivatives clause blocks redistributing a dataset you built from it, which is a real obstacle for anyone producing derived data. Reported but not independently confirmed here: the AgiBot stacks are CC BY-NC-SA 4.0, DexVLA is CC BY-NC, and RH20T uses a two-tier commercial/non-commercial licence.
+  - *Why it matters here:* "Non-commercial" is easy to spot and "no derivatives" is not, yet the second is the one that breaks a data pipeline: you can use EgoDex to train, but you may not be able to release the dataset you built on top of it. Anyone assembling a mixture for a product needs to check the no-derivatives clauses specifically rather than scanning for "non-commercial" and moving on. Treat the unconfirmed entries as leads to check, not as facts — that is the same standard the rest of this repo holds itself to, and licences are a domain where a confident wrong answer is worse than an explicit unknown.
 
 
 ## Counter-evidence — what did not work, and what stops working

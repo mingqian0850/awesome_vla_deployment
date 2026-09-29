@@ -249,3 +249,26 @@ entries:
       We deliberately rewrote this after finding the academic work. The original claim that
       the problem was undocumented was too broad, and an over-broad gap claim damages a
       curated index as much as a dead link does.
+  - id: gap-export-ros-coverage
+    name: "GAP — almost no VLA training framework documents a deployment path"
+    url: "https://github.com/mingqian0850/awesome_vla_deployment/issues"
+    type: gap
+    what: >
+      A survey of the 2024-2025 academic VLA cluster found that **zero repositories document
+      ONNX or TensorRT export, and zero document ROS integration**. The exceptions are narrow:
+      GR00T N1.7 ships a real exported path with measured rates (about 35.9 Hz on an H100,
+      12.4 Hz on AGX Thor, 6.6 Hz on Orin with TensorRT), and CogACT reports roughly 5.5 Hz.
+      openpi's own documentation describes "0.5-1 s latency per chunk" as normal.
+    why: >
+      This is the single most consequential gap for anyone choosing a framework, and it is
+      invisible until too late: you can pick a training framework, spend a week fine-tuning, and
+      only then discover there is no supported way to hit your control rate. The framework
+      comparison tables that exist rank models by success rate on benchmarks, not by whether the
+      output can be deployed at all.
+      Practical consequence: **decide your control-rate requirement first, then check the
+      framework's export story before you commit**, not after. And read the published latency
+      rather than assuming a faster GPU closes the gap — see
+      [docs/41](../docs/41-real-time-inference.md) for the arithmetic.
+    maturity: toy
+    verified: 2026-09
+    tags: [gap, export, tensorrt, onnx, ros, framework-selection]
