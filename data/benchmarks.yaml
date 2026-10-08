@@ -268,7 +268,7 @@ entries:
       Practical consequence: **decide your control-rate requirement first, then check the
       framework's export story before you commit**, not after. And read the published latency
       rather than assuming a faster GPU closes the gap — see
-      [docs/41](../docs/41-real-time-inference.md) for the arithmetic.
+      [docs/41](docs/41-real-time-inference.md) for the arithmetic.
     maturity: toy
     verified: 2026-09
     tags: [gap, export, tensorrt, onnx, ros, framework-selection]

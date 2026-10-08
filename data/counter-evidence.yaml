@@ -12,6 +12,25 @@ description: >
   A warning that applies to this whole section: an entry here is not a claim that a method is
   bad. It is a claim that someone tried it, in a specific setting, and this is what happened.
 entries:
+  - id: language-grounding-gap
+    name: "A successful rollout can ignore a valid change in the instruction"
+    paper_title: "Encoded but Not in Control: Revealing the Grounding Gap in Vision-Language Robot Policies"
+    url: "https://arxiv.org/abs/2610.06235"
+    type: paper
+    what: >
+      Scene-preserving instruction interventions reveal tested VLA and world-action policies
+      frequently selecting the scene-associated original target despite a valid target change.
+      Decodable target information inside a model does not establish that it controls actions.
+    why: >
+      Add paired rollouts with the same scene and different visible targets to deployment
+      acceptance tests; nominal success on scene-correlated instructions misses this failure.
+    maturity: research
+    verified: 2026-10
+    tags: [language, grounding, evaluation, target-selection]
+    notes: >
+      October 2026 preprint reports simulated and real-world experiments. The finding is
+      scoped to the tested policies and protocol; implementation and independent reproduction
+      were not verified here. Exact title checked against arXiv API on 2026-10-08.
   - id: oft-hardware-drift
     name: "A working fine-tune degraded to unusable in weeks, with no code or data change"
     url: "https://openvla-oft.github.io/"
@@ -204,7 +223,7 @@ entries:
       interacts with two other entries in this repo. DROID ships joint **velocity** actions at
       15 Hz, so copying its convention is not automatically wrong — but this result says the
       choice has a latency cost, and latency is the thing
-      [docs/41](41-real-time-inference.md) is about. A velocity action space makes your policy
+      [docs/41](docs/41-real-time-inference.md) is about. A velocity action space makes your policy
       more sensitive to exactly the staleness that chunked inference already introduces.
       Useful as the counterweight when someone proposes velocity actions for smoothness: the
       evidence points the other way.

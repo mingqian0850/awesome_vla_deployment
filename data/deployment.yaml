@@ -6,6 +6,86 @@ description: >
   models actually export to ONNX/TensorRT/OpenVINO, and no list publishes measured
   latency/VRAM/success-rate deltas. This section is the start of that.
 entries:
+  - id: eapn-execution-aligned-replanning
+    name: "EAPN — execution-aligned asynchronous replanning"
+    paper_title: "Execution-Aligned Progressive Noise for Consistent Asynchronous Replanning in Generative Robot Policies"
+    url: "https://arxiv.org/abs/2610.06090"
+    type: paper
+    what: >
+      Carries a shared noise trajectory across replanning steps, aligns it with executed
+      displacement, and conditions new generation on committed actions to reduce
+      inconsistent continuation between action chunks.
+    why: >
+      A concrete research approach when an asynchronous queue removes pauses but the
+      generated chunks still switch modes; evaluate continuity under measured inference delays.
+    maturity: research
+    verified: 2026-10
+    tags: [async, chunking, continuity, latency]
+    notes: >
+      October 2026 preprint with simulation and real-robot experiments. Paper identity
+      checked via arXiv API on 2026-10-08; runnable implementation and hardware performance
+      were not independently verified here.
+  - id: rephrase-before-you-act
+    name: "Rephrase Before You Act — instruction normalization for a frozen VLA"
+    paper_title: "Rephrase Before You Act: Characterizing and Mitigating Language Sensitivity in Vision-Language-Action Models"
+    url: "https://arxiv.org/abs/2610.10526"
+    type: paper
+    what: >
+      Scores alternative instructions on training tasks, distills rephrasing rules,
+      and rewrites each incoming instruction once without changing the policy weights.
+    why: >
+      Adds an explicit instruction interface to deployment: test paraphrase sensitivity
+      before attributing a rollout regression to camera calibration or model quality.
+    maturity: research
+    verified: 2026-10
+    tags: [language, robustness, instructions, evaluation]
+    notes: >
+      Reported gains are specific to the tested policies and tasks. The official project
+      links code and rule artifacts, but end-to-end reproduction was not run here and a
+      reuse license was not verified. Check rewritten intent as well as task success.
+    sources:
+      - "https://sttawm.github.io/rephrase-before-you-act/"
+      - "https://github.com/sttawm/phrase-rl"
+  - id: ogam-runtime-monitor
+    name: "OGAM — object-grounded attention monitoring"
+    paper_title: "OGAM: Connecting Systematic Testing to Runtime Assurance through Object-Grounded Attention Monitoring for VLA Policies"
+    url: "https://arxiv.org/abs/2610.05878"
+    type: paper
+    what: >
+      Projects policy attention onto objects and compares its evolution with successful
+      reference episodes using dynamic time warping and a conformally calibrated stop threshold.
+    why: >
+      Offers a monitor design to study when policy attention is accessible; evaluate missed
+      failures, false stops, and time-to-stop alongside task success before integration.
+    maturity: research
+    verified: 2026-10
+    tags: [monitoring, attention, runtime, evaluation]
+    notes: >
+      Research evidence under the paper's test protocol, not a general safety guarantee.
+      Requires object masks, policy attention access, and successful calibration episodes;
+      public implementation and independent hardware reproduction were not verified here.
+  - id: lerobot-rtc-modes
+    name: "LeRobot — guided vs trained RTC and checkpoint delay limits"
+    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/rtc.mdx"
+    type: docs
+    what: >
+      Main-branch RTC documentation distinguishes guided inference-time conditioning from
+      trained hard-prefix conditioning. Trained mode currently requires a Pi05 checkpoint
+      trained with `policy.rtc_training_max_delay > 0`.
+    why: >
+      Prevents treating trained RTC as a runtime switch for an arbitrary checkpoint.
+      Both `execution_horizon` and `inference.queue_threshold` must be at least the
+      checkpoint's maximum training delay; the horizon must also be no greater than
+      `chunk_size - rtc_training_max_delay`.
+    maturity: research
+    verified: 2026-10
+    license: Apache-2.0
+    tags: [rtc, chunking, checkpoint, latency, compatibility]
+    notes: >
+      Source inspected 2026-10-05. The main-branch guide includes trained mode while the
+      published en/rtc page inspected on the same date still describes guided RTC only.
+      Pin your LeRobot commit and use matching docs; no hardware validation was performed
+      for this entry. Async scheduling alone does not enforce continuity between chunks.
   - id: lerobot-inference
     name: "LeRobot — Policy Deployment (lerobot-rollout)"
     url: "https://huggingface.co/docs/lerobot/en/inference"
