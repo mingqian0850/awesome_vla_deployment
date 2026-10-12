@@ -1,0 +1,161 @@
+section: Further learning
+section_zh: 延伸学习
+order: 100
+description: Courses, handbooks and topic indexes.
+description_zh: 课程、手册与主题索引。
+entries:
+- id: vla-handbook
+  name: sou350121/VLA-Handbook
+  url: https://github.com/sou350121/VLA-Handbook
+  type: list
+  maturity: production
+  verified: 2026-09
+  license: unknown
+  tags:
+  - competitor
+  - chinese
+  - handbook
+  - deployment
+  what: Chinese handbook on VLA models, robot hardware and deployment.
+  what_zh: 介绍 VLA 模型、机器人硬件和部署的中文手册。
+- id: awesome-embodied-vla-va-vln
+  name: jonyzhang2023/awesome-embodied-vla-va-vln
+  url: https://github.com/jonyzhang2023/awesome-embodied-vla-va-vln
+  type: list
+  maturity: production
+  verified: 2026-09
+  tags:
+  - papers
+  - index
+  what: Index of vision-language-action, vision-action and vision-language-navigation research.
+  what_zh: 视觉语言动作、视觉动作与视觉语言导航研究索引。
+- id: gt-ripl-awesome-llm-robotics
+  name: GT-RIPL/Awesome-LLM-Robotics
+  url: https://github.com/GT-RIPL/Awesome-LLM-Robotics
+  type: list
+  maturity: production
+  verified: 2026-09
+  tags:
+  - papers
+  - index
+  - llm
+  what: Index of language-model applications in robotics.
+  what_zh: 语言模型在机器人领域的应用索引。
+- id: awesome-humanoid-robot-learning
+  name: YanjieZe/awesome-humanoid-robot-learning
+  url: https://github.com/YanjieZe/awesome-humanoid-robot-learning
+  type: list
+  maturity: production
+  verified: 2026-09
+  tags:
+  - humanoid
+  - teleoperation
+  - hardware
+  what: Index of humanoid robot learning, teleoperation and hardware research.
+  what_zh: 人形机器人学习、遥操作与硬件研究索引。
+- id: awesome-physical-ai-natnew
+  name: natnew/awesome-physical-ai
+  url: https://github.com/natnew/awesome-physical-ai
+  type: list
+  maturity: production
+  verified: 2026-09
+  tags:
+  - middleware
+  - standards
+  - ros2
+  what: Index of physical-AI middleware, system architecture and related standards.
+  what_zh: 物理 AI 中间件、系统架构与相关标准索引。
+- id: aidaslab-data-curation
+  name: AIDASLab/Awesome-VLA-Data-Collection-Synthesis-Curation
+  url: https://github.com/AIDASLab/Awesome-VLA-Data-Collection-Synthesis-Curation
+  type: list
+  maturity: research
+  verified: 2026-09
+  tags:
+  - data
+  - curation
+  - papers
+  what: Paper index on robot data collection, cleaning, annotation and augmentation.
+  what_zh: 机器人数据采集、清洗、标注与增强的论文索引。
+- id: awesome-robot-data-engine
+  name: chang-xinhai/Awesome-Robot-Data-Engine
+  url: https://github.com/chang-xinhai/Awesome-Robot-Data-Engine
+  type: list
+  maturity: research
+  verified: 2026-09
+  tags:
+  - data
+  - formats
+  - papers
+  what: Resources on robot data collection, processing, formats and mixing.
+  what_zh: 机器人数据采集、处理、格式与混合的资料索引。
+- id: awesome-long-horizon-robot-manipulation
+  name: Ziteng-Wang/Awesome-Long-Horizon-Robot-Manipulation
+  url: https://github.com/Ziteng-Wang/Awesome-Long-Horizon-Robot-Manipulation
+  type: list
+  maturity: research
+  verified: 2026-09
+  tags:
+  - long-horizon
+  - segmentation
+  - papers
+  what: Resources on long-horizon manipulation, memory, progress and recovery.
+  what_zh: 长时程操作、记忆、进度与恢复机制的资料索引。
+- id: awesome-vla-yueen-ma
+  name: yueen-ma/Awesome-VLA
+  url: https://github.com/yueen-ma/Awesome-VLA
+  type: list
+  maturity: production
+  verified: 2026-09
+  tags:
+  - papers
+  - index
+  what: VLA paper index accompanying a survey.
+  what_zh: 与综述配套的 VLA 论文索引。
+- id: awesome-rl-vla
+  name: Denghaoyuan123/Awesome-RL-VLA
+  url: https://github.com/Denghaoyuan123/Awesome-RL-VLA
+  type: list
+  maturity: research
+  verified: 2026-09
+  tags:
+  - rl
+  - post-training
+  - papers
+  what: Resources on reinforcement-learning post-training of VLA models.
+  what_zh: VLA 模型强化学习后训练资料。
+- id: every-embodied
+  name: datawhalechina/every-embodied
+  url: https://github.com/datawhalechina/every-embodied
+  type: list
+  maturity: production
+  verified: 2026-09
+  tags:
+  - chinese
+  - tutorial
+  - beginner
+  what: Chinese beginner course with hands-on embodied-robot projects.
+  what_zh: 包含具身机器人动手项目的中文入门课程。
+- id: xbotics-handbook
+  name: Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook
+  url: https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook
+  type: list
+  maturity: production
+  verified: 2026-09
+  tags:
+  - chinese
+  - tutorial
+  what: Chinese course spanning perception, control, data, training and deployment.
+  what_zh: 涵盖感知、控制、数据、训练与部署的中文课程。
+- id: action-diffusion-handbook
+  name: AlmondGod/action-diffusion-handbook
+  url: https://github.com/AlmondGod/action-diffusion-handbook
+  type: list
+  maturity: research
+  verified: 2026-09
+  tags:
+  - chinese
+  - handbook
+  - diffusion
+  what: Handbook covering action diffusion and related robot-policy architectures.
+  what_zh: 介绍动作扩散及相关机器人策略架构的手册。

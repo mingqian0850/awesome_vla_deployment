@@ -1,232 +1,181 @@
-section: "Counter-evidence — what did not work, and what stops working"
-order: 80
-description: >
-  A section no other list in this space has, and the one most likely to save you a month.
-  Every entry is a negative result, a non-transfer report, or a documented regression —
-  reported by the people who ran the experiment, with the numbers they gave.
-
-  These belong in a deployment list for the same reason the provenance policy exists: the
-  published record is heavily selected toward successes, so the failures are the scarce
-  information.
-
-  A warning that applies to this whole section: an entry here is not a claim that a method is
-  bad. It is a claim that someone tried it, in a specific setting, and this is what happened.
+section: Reported failure cases
+section_zh: 已报告的失败案例
+order: 70
+description: Observed limitations in particular tasks and configurations.
+description_zh: 特定任务与配置中观测到的限制。
 entries:
-  - id: language-grounding-gap
-    name: "A successful rollout can ignore a valid change in the instruction"
-    paper_title: "Encoded but Not in Control: Revealing the Grounding Gap in Vision-Language Robot Policies"
-    url: "https://arxiv.org/abs/2610.06235"
-    type: paper
-    what: >
-      Scene-preserving instruction interventions reveal tested VLA and world-action policies
-      frequently selecting the scene-associated original target despite a valid target change.
-      Decodable target information inside a model does not establish that it controls actions.
-    why: >
-      Add paired rollouts with the same scene and different visible targets to deployment
-      acceptance tests; nominal success on scene-correlated instructions misses this failure.
-    maturity: research
-    verified: 2026-10
-    tags: [language, grounding, evaluation, target-selection]
-    notes: >
-      October 2026 preprint reports simulated and real-world experiments. The finding is
-      scoped to the tested policies and protocol; implementation and independent reproduction
-      were not verified here. Exact title checked against arXiv API on 2026-10-08.
-  - id: oft-hardware-drift
-    name: "A working fine-tune degraded to unusable in weeks, with no code or data change"
-    url: "https://openvla-oft.github.io/"
-    type: blog
-    what: >
-      The OpenVLA-OFT authors, explaining why one task performed far worse than harder ones:
-      "we would observe over 90% success rate on this task with fine-tuned OpenVLA policies.
-      However, due to distribution shifts, performance dropped quite significantly when we ran
-      the tests again weeks later." They attribute it to "shifts in the wrist camera viewpoints
-      and slight wear-and-tear in a few robot joints, which affected the dynamics", and note
-      that the task ultimately had to be re-evaluated with all methods simultaneously "so that
-      they all encounter the same train-test distribution shifts".
-    why: >
-      The strongest evidence anywhere that a VLA deployment can silently rot. It is the reason
-      `templates/deployment-manifest.yaml` exists: without binding a checkpoint to the camera
-      pose, the calibration hash and the joint condition it was validated against, "the model
-      that worked last month" is an unfalsifiable claim and you will spend that month
-      retraining. Physical wear is a distribution shift, and it is not in any dataset.
-    maturity: production
-    verified: 2026-09
-    tags: [drift, calibration, non-reproducibility, camera-pose, wear]
-
-  - id: picknik-loss-curve
-    name: "A good loss curve is not a working policy"
-    url: "https://docs.picknik.ai/how_to/vla/train_a_vla_policy/"
-    type: docs
-    what: >
-      An engineering runbook warning that the standard pi0.5 LoRA fine-tune "trains against your
-      demonstrations with no held-out validation split and no rollouts in the loop, so it has no
-      evaluation metric. Low loss means the model reproduces the demonstrations it was shown.
-      It does not mean the policy completes the task, and because nothing is held out, overfitting
-      does not show up in the curve."
-    why: >
-      States plainly the thing that wastes the most time in this field: reading the loss as if it
-      were a success rate. It is also the cleanest argument for instrumenting rollouts from the
-      first day rather than after the loss looks good.
-    maturity: production
-    verified: 2026-09
-    tags: [loss, evaluation, overfitting, validation, pitfall]
-
-  - id: oft-more-data-did-not-fix-it
-    name: "Quadrupling the dataset did not fix a language-grounding failure"
-    url: "https://openvla-oft.github.io/"
-    type: blog
-    what: >
-      On the "put X into pot" task, the authors report that "simply doubling/quadrupling the
-      dataset size did not solve the problem, as it only slightly improved language following
-      ability. To achieve much better language grounding, we had to take additional measures",
-      such as adding FiLM conditioning. They also state they did not actually need all 300
-      demonstrations they collected for satisfactory performance.
-    why: >
-      Direct counter-evidence to the reflex answer of "collect more episodes". More data in the
-      same distribution does not fix a conditioning failure — if the instruction is not being
-      used, more examples of it not being used does not help. Diagnose which failure you have
-      before spending weeks on collection.
-    maturity: production
-    verified: 2026-09
-    tags: [negative-result, language-grounding, data-scaling, film]
-
-  - id: lerobot-25-episodes-failed
-    name: "25 episodes explicitly was not enough"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/smolvla.mdx"
-    type: docs
-    what: >
-      The SmolVLA documentation reports a controlled comparison: "we recorded 50 episodes across
-      5 distinct cube positions... We tried similar dataset with 25 episodes, and it was not
-      enough leading to a bad performance. So, the data quality and quantity is definitely a
-      key." The same docs recommend about 50 episodes as a starting point.
-    why: >
-      A rare published number where a *specific* demonstration count is documented as failing,
-      rather than a vague recommendation to collect more. Combined with the maintainer guidance
-      below, it gives you a defensible floor instead of a guess.
-    maturity: production
-    verified: 2026-09
-    tags: [episode-count, data-size, negative-result, smolvla]
-
-  - id: lerobot-50-is-a-floor
-    name: "50 episodes is a floor, not a target"
-    url: "https://github.com/huggingface/lerobot/issues/2378"
-    type: discussion
-    what: >
-      Maintainer guidance on how much data a pi0.5 fine-tune needs: "~50 episodes is a
-      reasonable start for a single-location PnP; go to 100-200 if you vary object/position."
-      The docs state the same rule as "at least 50 episodes, with 10 episodes per location".
-    why: >
-      Converts the collection question from "more is better" into a number you can plan against,
-      and makes the key variable explicit: it is not the episode count, it is the number of
-      distinct *conditions* you need to cover. Ten episodes per location is a much more useful
-      planning rule than a total.
-    maturity: production
-    verified: 2026-09
-    tags: [episode-count, data-size, planning, pi05]
-
-  - id: pi0-authors-hedge
-    name: "The pi0 authors say it may not work for you"
-    url: "https://github.com/Physical-Intelligence/openpi"
-    type: docs
-    what: >
-      From the openpi README: "pi0 was developed for our own robots, which differ from the widely
-      used platforms such as ALOHA and DROID... we do not expect every such attempt to be
-      successful. All this is to say: pi0 may or may not work for you."
-    why: >
-      Worth citing when a fine-tune fails and the instinct is to blame your own data pipeline.
-      The model authors state that transfer to a different platform is not guaranteed. It also
-      justifies budgeting for a port as a research task rather than an engineering one.
-    maturity: production
-    verified: 2026-09
-    tags: [non-transfer, expectations, pi0]
-
-  - id: oft-copies-bad-demos
-    name: "The policy reproduces the flaws in your demonstrations"
-    url: "https://openvla-oft.github.io/"
-    type: blog
-    what: >
-      Reported case: "When using a diffusion-based fine-tuned VLA (pi0) to scoop pretzels, the
-      robot fails because it inserts the spoon too deeply... pi0 generates this same behavior
-      two times in twelve trials" — copied from suboptimal demonstrations in the training data.
-    why: >
-      Imitation learning reproduces the data, including its mistakes. A behaviour that appears in
-      a consistent fraction of rollouts is usually in your demonstrations, not in the model. This
-      is the argument for watching your own teleoperation footage before assuming an
-      optimisation problem.
-    maturity: production
-    verified: 2026-09
-    tags: [negative-result, data-quality, imitation, demonstrations]
-
-  - id: sim-benchmarks-hid-the-problem
-    name: "Sim benchmarks obscured the real deployment problems"
-    url: "https://openaccess.thecvf.com/content/CVPR2026W/MEIS/html/Liu_Bridging_the_Pretrain-to-Real_Gap_Alignment_Challenges_in_Deploying_Generalist_VLA_CVPRW_2026_paper.html"
-    type: paper
-    what: >
-      A workshop paper on deploying a 7B OpenVLA on a real Franka Research 3, reporting that "the
-      prevailing reliance on simulated benchmarks obscures the severe physical and algorithmic
-      domain shifts encountered during real-world hardware deployment", and that making it work
-      required deterministic decoding enforcement, strict thresholding from continuous to binary,
-      geometric retargeting and LoRA.
-    why: >
-      Peer-reviewed support for treating simulation results as a screening filter rather than
-      evidence of deployment readiness — and a concrete list of the unglamorous fixes that real
-      deployment actually needed.
-    maturity: research
-    verified: 2026-09
-    tags: [sim-to-real, benchmark-critique, openvla, franka]
-
-  - id: openvla-100-demos
-    name: "~100 demonstrations, and a concrete training target"
-    url: "https://github.com/openvla/openvla/issues/12"
-    type: discussion
-    what: >
-      An OpenVLA author's guidance: "training dataset size: ~100 episodes", and "we usually train
-      the model to ~95+% action token accuracy". The README repeats the roughly 100-demonstration
-      figure and notes that out of the box the model only works well on domains from its training
-      data.
-    why: >
-      Gives an alternative to watching the loss: action-token accuracy on your own data is a
-      concrete, checkable target with a stated value, and it is a much better early signal than
-      the training loss.
-    maturity: research
-    verified: 2026-09
-    tags: [episode-count, action-token-accuracy, openvla, metrics]
-
-  - id: smolvla-pretraining-payoff
-    name: "Pretraining is worth +26.6 points on the same task"
-    url: "https://arxiv.org/abs/2506.01844"
-    type: paper
-    what: >
-      SmolVLA reports 51.7% success on SO100 without pretraining on community datasets, rising to
-      78.3% after pretraining on community-collected data — a +26.6 point absolute improvement.
-      It was trained on fewer than 30k episodes drawn entirely from public datasets, roughly an
-      order of magnitude less data than prior work, standardised at 30 FPS.
-    why: >
-      Quantifies what you get from starting at a pretrained checkpoint rather than from scratch,
-      which is the main argument for the fine-tuning approach this repo assumes. It also sets a
-      realistic expectation for how far a small open model can go when the pretraining mixture
-      matches your hardware.
-    maturity: research
-    verified: 2026-09
-    tags: [pretraining, smolvla, success-rate, benchmark]
-
-  - id: position-beats-velocity
-    name: "Position control beat velocity control, against the trend"
-    url: "https://arxiv.org/abs/2303.04137"
-    type: paper
-    what: >
-      The Diffusion Policy work reports that position control consistently outperformed velocity
-      control "in contrast to the majority of recent behavior cloning work", and specifically
-      that position control is **robust against latency** while velocity control is not.
-    why: >
-      Direct counter-evidence for anyone planning a velocity or torque action space, and it
-      interacts with two other entries in this repo. DROID ships joint **velocity** actions at
-      15 Hz, so copying its convention is not automatically wrong — but this result says the
-      choice has a latency cost, and latency is the thing
-      [docs/41](docs/41-real-time-inference.md) is about. A velocity action space makes your policy
-      more sensitive to exactly the staleness that chunked inference already introduces.
-      Useful as the counterweight when someone proposes velocity actions for smoothness: the
-      evidence points the other way.
-    maturity: production
-    verified: 2026-09
-    tags: [action-space, position, velocity, latency, negative-result, counter-evidence]
+- id: language-grounding-gap
+  name: Language-grounding interventions
+  paper_title: 'Encoded but Not in Control: Revealing the Grounding Gap in Vision-Language Robot Policies'
+  url: https://arxiv.org/abs/2610.06235
+  type: paper
+  maturity: research
+  verified: 2026-10
+  tags:
+  - language
+  - grounding
+  - evaluation
+  - target-selection
+  what: Changing a valid target instruction while holding the scene fixed can reveal a policy that follows
+    scene correlations rather than the requested target.
+  what_zh: 固定场景、改变合法的目标指令，可以发现策略是否依赖场景关联而没有服从目标变化。
+  notes: Findings apply to the tested policies and protocol; the source reports both simulation and real-robot
+    experiments.
+  notes_zh: 结论适用于所测策略与实验协议；来源包含仿真和真机实验。
+- id: oft-hardware-drift
+  name: OpenVLA-OFT — hardware drift report
+  url: https://openvla-oft.github.io/
+  type: blog
+  maturity: production
+  verified: 2026-09
+  tags:
+  - drift
+  - calibration
+  - non-reproducibility
+  - camera-pose
+  - wear
+  what: OpenVLA-OFT authors report degradation after wrist-camera pose changes and joint wear, despite
+    unchanged code and training data.
+  what_zh: OpenVLA-OFT 作者报告：代码和训练数据不变，腕部相机位置变化与关节磨损仍会导致性能下降。
+- id: picknik-loss-curve
+  name: PickNik — training loss and rollout evaluation
+  url: https://docs.picknik.ai/how_to/vla/train_a_vla_policy/
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - loss
+  - evaluation
+  - overfitting
+  - validation
+  - pitfall
+  what: A training runbook explains that low demonstration loss without held-out evaluation does not establish
+    closed-loop task success.
+  what_zh: 训练手册指出：没有独立评测时，示教损失较低不能证明闭环任务成功。
+- id: oft-more-data-did-not-fix-it
+  name: OpenVLA-OFT — language-grounding data experiment
+  url: https://openvla-oft.github.io/
+  type: blog
+  maturity: production
+  verified: 2026-09
+  tags:
+  - negative-result
+  - language-grounding
+  - data-scaling
+  - film
+  what: In a reported OpenVLA-OFT task, doubling or quadrupling demonstrations did not resolve language
+    grounding; conditioning changes were also needed.
+  what_zh: 在 OpenVLA-OFT 的一个任务中，示教数量增加到两倍或四倍仍未解决语言接地问题，还需要调整条件输入机制。
+- id: lerobot-25-episodes-failed
+  name: SmolVLA — demonstration-count comparison
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/smolvla.mdx
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - episode-count
+  - data-size
+  - negative-result
+  - smolvla
+  what: SmolVLA documentation reports poor performance with 25 episodes in a cube task and a better result
+    with 50; this is a task-specific comparison.
+  what_zh: SmolVLA 文档报告一个方块任务中 25 条示教表现较差、50 条更好；该结论来自特定任务。
+- id: lerobot-50-is-a-floor
+  name: LeRobot — demonstration coverage guidance
+  url: https://github.com/huggingface/lerobot/issues/2378
+  type: discussion
+  maturity: production
+  verified: 2026-09
+  tags:
+  - episode-count
+  - data-size
+  - planning
+  - pi05
+  what: LeRobot guidance discusses starting with about 50 demonstrations for a fixed-location task and
+    increasing coverage as objects or positions vary.
+  what_zh: LeRobot 建议固定位置任务可从约 50 条示教起步；物体或位置变化后，应增加覆盖范围。
+- id: pi0-authors-hedge
+  name: openpi — embodiment-transfer limitations
+  url: https://github.com/Physical-Intelligence/openpi
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - non-transfer
+  - expectations
+  - pi0
+  what: openpi documents embodiment differences between its training robots and other platforms; successful
+    transfer is not guaranteed.
+  what_zh: openpi 说明训练机器人与其他平台存在形态差异，迁移成功并无保证。
+- id: oft-copies-bad-demos
+  name: OpenVLA-OFT — demonstration-quality report
+  url: https://openvla-oft.github.io/
+  type: blog
+  maturity: production
+  verified: 2026-09
+  tags:
+  - negative-result
+  - data-quality
+  - imitation
+  - demonstrations
+  what: A reported scooping experiment shows a learned policy reproducing excessive insertion depth present
+    in suboptimal demonstrations.
+  what_zh: 一项舀取实验显示，策略会重复低质量示教中过深插入的动作。
+- id: sim-benchmarks-hid-the-problem
+  name: OpenVLA — Franka deployment case study
+  url: https://openaccess.thecvf.com/content/CVPR2026W/MEIS/html/Liu_Bridging_the_Pretrain-to-Real_Gap_Alignment_Challenges_in_Deploying_Generalist_VLA_CVPRW_2026_paper.html
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - sim-to-real
+  - benchmark-critique
+  - openvla
+  - franka
+  what: A real Franka Research 3 deployment of OpenVLA required decoding, gripper-threshold and geometric
+    adaptations beyond simulation evaluation.
+  what_zh: 将 OpenVLA 部署到真实 Franka Research 3 时，除仿真评测外，还需处理解码、夹爪阈值和几何适配。
+- id: openvla-100-demos
+  name: OpenVLA — fine-tuning data guidance
+  url: https://github.com/openvla/openvla/issues/12
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - episode-count
+  - action-token-accuracy
+  - openvla
+  - metrics
+  what: OpenVLA authors describe approximately 100 demonstrations for a fine-tuning setup; token accuracy
+    remains separate from rollout success.
+  what_zh: OpenVLA 作者描述了一种约 100 条示教的微调配置；动作 token 准确率与实际任务成功率仍需分开测量。
+- id: smolvla-pretraining-payoff
+  name: SmolVLA — pretraining comparison
+  url: https://arxiv.org/abs/2506.01844
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - pretraining
+  - smolvla
+  - success-rate
+  - benchmark
+  what: The SmolVLA paper reports higher SO100 task success after community-data pretraining under its
+    experimental protocol.
+  what_zh: SmolVLA 论文在其 SO100 实验协议下报告，使用社区数据预训练后任务成功率提高。
+- id: position-beats-velocity
+  name: Diffusion Policy — position and velocity control
+  url: https://arxiv.org/abs/2303.04137
+  type: paper
+  maturity: production
+  verified: 2026-09
+  tags:
+  - action-space
+  - position
+  - velocity
+  - latency
+  - negative-result
+  - counter-evidence
+  what: Diffusion Policy reports position control outperforming velocity control in its tested tasks,
+    with different sensitivity to latency.
+  what_zh: Diffusion Policy 在所测任务中报告位置控制优于速度控制，两者对延迟的敏感程度不同。

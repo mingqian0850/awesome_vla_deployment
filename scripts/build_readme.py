@@ -1,195 +1,124 @@
 #!/usr/bin/env python3
+"""Build paired learner indexes, resource catalogs and troubleshooting pages.
+
+Source: data/*.yaml and templates/README.{head,foot}[.en].md.
+Editorial records are deliberately outside the publishing inputs.
 """
-Generate README.md from data/*.yaml.
-
-The YAML files are the single source of truth. README.md is a build artifact: CI re-runs
-this script and fails if the committed README differs, so the two can never drift.
-
-    python scripts/build_readme.py            # write README.md
-    python scripts/build_readme.py --check    # exit 1 if README.md is out of date
-"""
-
 from __future__ import annotations
-
 import argparse
-import glob
-import os
+from pathlib import Path
 import sys
-
 import yaml
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA = os.path.join(ROOT, "data")
-HEAD = os.path.join(ROOT, "templates", "README.head.md")
-FOOT = os.path.join(ROOT, "templates", "README.foot.md")
-OUT = os.path.join(ROOT, "README.md")
-
-MATURITY = {
-    "production": "production",
-    "research": "research",
-    "toy": "toy",
-    "abandoned": "abandoned",
+ROOT = Path(__file__).resolve().parents[1]
+LANGS = ('zh', 'en')
+LABELS = {
+ 'en': {'resources':'Resource catalog','trouble':'Troubleshooting','contents':'Contents',
+        'source':'Additional sources','note':'Use conditions','cause':'Possible cause',
+        'test':'Check','fix':'Action','home':'Home','entries':'resources',
+        'production':'hardware use reported','research':'research','toy':'demo','abandoned':'archived reference'},
+ 'zh': {'resources':'资源目录','trouble':'排错手册','contents':'目录',
+        'source':'补充来源','note':'使用条件','cause':'可能原因',
+        'test':'检查','fix':'处理','home':'首页','entries':'条资源',
+        'production':'有真机使用记录','research':'研究阶段','toy':'演示阶段','abandoned':'历史参考'},
 }
-MATURITY_NOTE = {
-    "production": "runs on real hardware, maintained",
-    "research": "works in a lab, expect to adapt it",
-    "toy": "demo-grade, do not plan around it",
-    "abandoned": "no commits for ~12 months, kept and dated on purpose",
-}
+TYPES = dict(repo='代码仓库',dataset='数据集',paper='论文',tool='工具',docs='文档',
+             blog='技术文章',video='视频',discussion='讨论记录',standard='标准资料',
+             list='资料索引',benchmark='测量或基准',gap='资料缺口')
 
+def local(obj, key, lang):
+    value = obj.get(key if lang == 'en' else key + '_zh')
+    if not isinstance(value,str) or not value.strip():
+        raise ValueError(f"Missing {lang} field {key}: {obj.get('id', obj.get('section', '?'))}")
+    return ' '.join(value.split())
 
 def load():
-    """All data/*.yaml that describe content. link-exceptions.yaml is tooling config, not
-    content, and has no `section` — skip it rather than teaching it the content schema."""
-    docs = []
-    for path in sorted(glob.glob(os.path.join(DATA, "*.yaml"))):
-        if os.path.basename(path) == "link-exceptions.yaml":
-            continue
-        with open(path, encoding="utf-8") as f:
-            doc = yaml.safe_load(f)
-        if not isinstance(doc, dict) or "section" not in doc:
-            print(f"warning: skipping {os.path.basename(path)} — no 'section' key", file=sys.stderr)
-            continue
-        doc["_file"] = os.path.basename(path)
-        docs.append(doc)
-    docs.sort(key=lambda d: d.get("order", 999))
-    return docs
+    docs=[];ids=set()
+    for path in sorted((ROOT/'data').glob('*.yaml')):
+        d=yaml.safe_load(path.read_text())
+        if path.name=='link-exceptions.yaml':continue
+        if not isinstance(d,dict) or 'section' not in d:raise ValueError(f'Invalid data file: {path}')
+        d['_slug']=path.stem
+        for lang in LANGS:
+            local(d,'section',lang);local(d,'description',lang)
+        for e in d.get('entries',[]):
+            if e['id'] in ids:raise ValueError(f"Duplicate ID: {e['id']}")
+            ids.add(e['id'])
+            if 'why' in e:raise ValueError('Selection rationale belongs in editorial/')
+            for lang in LANGS:
+                local(e,'what',lang)
+                if 'notes' in e or 'notes_zh' in e:local(e,'notes',lang)
+        for s in d.get('symptoms',[]):
+            for lang in LANGS:
+                local(s,'symptom',lang)
+                for c in s['causes']:
+                    for key in ('cause','test','fix'):local(c,key,lang)
+        docs.append(d)
+    return sorted(docs,key=lambda d:d.get('order',999))
 
+def nav(page,lang):
+    if lang=='zh':return f'[首页](../../README.md) · [English](../{page}.md)'
+    return f'[Home](../README.en.md) · [中文](zh/{page}.md)'
 
-def anchor(text: str) -> str:
-    keep = [c.lower() if c.isalnum() or c == " " or c == "-" else "" for c in text]
-    return "".join(keep).strip().replace(" ", "-")
-
-
-def stats(docs):
-    counts = {}
-    total = 0
+def build_catalog(docs,lang):
+    L=LABELS[lang]
+    out=[f"# {L['resources']}",'',nav('resources',lang),'']
+    out += [('Descriptions refer to the linked sources and recorded versions. A research result is not an independently reproduced deployment.' if lang=='en' else '条目描述对应所链接来源及其记录版本。研究结果不等于已独立复现的部署方案。'),'']
+    out += [f"## {L['contents']}",'']
     for d in docs:
-        for e in d.get("entries", []) or []:
-            total += 1
-            counts[e.get("maturity", "unknown")] = counts.get(e.get("maturity", "unknown"), 0) + 1
-    return total, counts
-
-
-def render_entry(e) -> list[str]:
-    name = e["name"]
-    url = e.get("url")
-    title = f"[{name}]({url})" if url else name
-    meta = [f"`{e.get('type', '?')}`", f"`{e.get('maturity', '?')}`"]
-    if e.get("license"):
-        meta.append(f"`{e['license']}`")
-    if e.get("verified"):
-        meta.append(f"verified {e['verified']}")
-    if e.get("tags"):
-        meta.append(" ".join(f"#{t}" for t in e["tags"]))
-    lines = [f"- **{title}** — {' · '.join(meta)}"]
-    if e.get("what"):
-        lines.append(f"  - *What it is:* {e['what'].strip()}")
-    if e.get("why"):
-        lines.append(f"  - *Why it matters here:* {e['why'].strip()}")
-    if e.get("notes"):
-        lines.append(f"  - *Note:* {e['notes'].strip()}")
-    return lines
-
-
-def render_symptom(s) -> list[str]:
-    badge = []
-    if s.get("severity"):
-        badge.append(f"severity: {s['severity']}")
-    if s.get("frequency"):
-        badge.append(f"frequency: {s['frequency']}")
-    lines = [f"### {s['symptom']}", ""]
-    if badge:
-        lines += ["`" + "` · `".join(badge) + "`", ""]
-    for i, c in enumerate(s.get("causes", []), start=1):
-        rank = c.get("rank", i)
-        lines.append(f"**Cause {rank} — {c['cause'].strip()}**")
-        lines.append("")
-        if c.get("test"):
-            lines.append(f"- **Test:** {c['test'].strip()}")
-        if c.get("fix"):
-            lines.append(f"- **Fix:** {c['fix'].strip()}")
-        if c.get("sources"):
-            lines.append("- **Source:** " + " · ".join(f"<{u}>" for u in c["sources"]))
-        lines.append("")
-    if s.get("sources"):
-        lines.append("Sources: " + " · ".join(f"<{u}>" for u in s["sources"]))
-        lines.append("")
-    return lines
-
-
-def build(docs) -> str:
-    total, counts = stats(docs)
-    with open(HEAD, encoding="utf-8") as f:
-        head = f.read()
-    with open(FOOT, encoding="utf-8") as f:
-        foot = f.read()
-
-    head = head.replace("{{TOTAL}}", str(total))
-    head = head.replace(
-        "{{MATURITY_LINE}}",
-        " · ".join(f"{counts.get(k, 0)} {k}" for k in ("production", "research", "toy", "abandoned")),
-    )
-
-    out = [head.rstrip(), ""]
-
-    # contents
-    out.append("## Contents")
-    out.append("")
+        if d.get('entries'):out.append(f"- [{local(d,'section',lang)}](#{d['_slug']})")
+    out.append('')
     for d in docs:
-        out.append(f"- [{d['section']}](#{anchor(d['section'])})")
-        if d.get("symptoms"):
-            for s in d["symptoms"]:
-                out.append(f"  - [{s['symptom'][:72]}](#{anchor(s['symptom'])})")
-    out.append("")
+        if not d.get('entries'):continue
+        out += [f'<a id="{d["_slug"]}"></a>',f"## {local(d,'section',lang)}",'',local(d,'description',lang),'']
+        for e in d['entries']:
+            title=e['name'];url=e.get('url');title=f'[{title}]({url})' if url else title
+            meta=[TYPES.get(e['type'],e['type']) if lang=='zh' else e['type'],L.get(e['maturity'],e['maturity'])]
+            if e.get('license'):meta.append(e['license'])
+            out += [f'<a id="{e["id"]}"></a>',f'### {title}','', ' · '.join(meta),'',local(e,'what',lang),'']
+            if e.get('notes'):out += [f"**{L['note']}：** {local(e,'notes',lang)}",'']
+            if e.get('sources'):out += [f"{L['source']}: "+' · '.join(f'[↗ {i}]({u})' for i,u in enumerate(e['sources'],1)),'']
+    return '\n'.join(out).rstrip()+'\n'
 
-    for d in docs:
-        out.append(f"## {d['section']}")
-        out.append("")
-        if d.get("description"):
-            out.append(" ".join(d["description"].split()))
-            out.append("")
-        for e in d.get("entries", []) or []:
-            out += render_entry(e)
-        if d.get("entries"):
-            out.append("")
-        if d.get("symptoms"):
-            out.append(
-                "Read the causes in order. They are ranked by how often they turn out to be "
-                "the answer, not by how interesting they are."
-            )
-            out.append("")
-            for s in d["symptoms"]:
-                out += render_symptom(s)
-        out.append("")
+def build_troubleshooting(docs,lang):
+    L=LABELS[lang];d=next(d for d in docs if d.get('symptoms'))
+    out=[f"# {L['trouble']}",'',nav('troubleshooting',lang),'',local(d,'description',lang),'']
+    for s in d['symptoms']:out.append(f"- [{local(s,'symptom',lang)}](#{s['id']})")
+    out.append('')
+    for s in d['symptoms']:
+        out += [f'<a id="{s["id"]}"></a>',f"## {local(s,'symptom',lang)}",'']
+        for i,c in enumerate(s['causes'],1):
+            out += [f"### {i}. {local(c,'cause',lang)}",'',f"- **{L['test']}：** {local(c,'test',lang)}",f"- **{L['fix']}：** {local(c,'fix',lang)}"]
+            if c.get('sources'):out.append(f"- **{L['source']}：** "+' · '.join(f'[↗ {j}]({u})' for j,u in enumerate(c['sources'],1)))
+            out.append('')
+        if s.get('sources'):out += [L['source']+': '+' · '.join(f'[↗ {j}]({u})' for j,u in enumerate(s['sources'],1)),'']
+    return '\n'.join(out).rstrip()+'\n'
 
-    out.append(foot.rstrip())
-    out.append("")
-    return "\n".join(out)
+def outputs(docs):
+    total=sum(len(d.get('entries',[])) for d in docs)
+    result={}
+    for lang in LANGS:
+        suffix='' if lang=='zh' else '.en'
+        head=(ROOT/'templates'/f'README.head{suffix}.md').read_text()
+        foot=(ROOT/'templates'/f'README.foot{suffix}.md').read_text()
+        result[f'README{suffix}.md']=(head.rstrip()+'\n\n'+foot.rstrip()+'\n').replace('{{TOTAL}}',str(total))
+        folder='docs/zh' if lang=='zh' else 'docs'
+        result[f'{folder}/resources.md']=build_catalog(docs,lang)
+        result[f'{folder}/troubleshooting.md']=build_troubleshooting(docs,lang)
+    return result
 
-
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--check", action="store_true", help="fail if README.md is out of date")
-    args = ap.parse_args()
-
-    docs = load()
-    text = build(docs)
-
-    if args.check:
-        current = open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""
-        if current != text:
-            print("README.md is out of date. Run: python scripts/build_readme.py", file=sys.stderr)
-            return 1
-        print("README.md is up to date.")
-        return 0
-
-    with open(OUT, "w", encoding="utf-8") as f:
-        f.write(text)
-    total, counts = stats(docs)
-    print(f"wrote README.md — {total} entries ({counts}) from {len(docs)} data files")
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument('--check',action='store_true');args=ap.parse_args()
+    try: rendered=outputs(load())
+    except (ValueError,KeyError) as e:print(str(e),file=sys.stderr);return 1
+    stale=[]
+    for name,text in rendered.items():
+        p=ROOT/name
+        if args.check:
+            if not p.exists() or p.read_text()!=text:stale.append(name)
+        else:p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
+    if stale:print('Generated files out of date: '+', '.join(stale),file=sys.stderr);return 1
+    print(f'{len(rendered)} bilingual generated pages '+('are up to date.' if args.check else 'written.'))
     return 0
 
-
-if __name__ == "__main__":
-    sys.exit(main())
+if __name__=='__main__':sys.exit(main())

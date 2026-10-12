@@ -1,0 +1,5 @@
+date,session_id,operator,task,sub_task,episode_index,object_ids,object_poses,outcome,notes
+2026-01-15,S001,OP_A,pick_and_place,reach,0,"block_01","[0.42,0.11,0.03,0,0,0]",success,
+2026-01-15,S001,OP_A,pick_and_place,grasp,0,"block_01","[0.42,0.11,0.03,0,0,0]",success,
+2026-01-15,S001,OP_A,pick_and_place,carry,0,"block_01","[0.42,0.11,0.03,0,0,0]",success,
+2026-01-15,S001,OP_A,pick_and_place,place,0,"block_01","[0.42,0.11,0.03,0,0,0]",failure,"gripper slipped at 2.1s"

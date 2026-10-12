@@ -23,6 +23,12 @@ jobs:
       - name: README is up to date
         run: python scripts/build_readme.py --check
 
+      - name: Publication regression checks
+        run: python scripts/test_build_readme.py
+
+      - name: Bilingual navigation and content boundaries
+        run: python scripts/check_docs.py
+
       # Provenance policy: every link must resolve. A popular list in this space has been
       # found to contain fabricated arXiv IDs, so this is enforced rather than aspirational.
       - name: All links resolve

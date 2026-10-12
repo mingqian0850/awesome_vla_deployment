@@ -1,0 +1,66 @@
+# Deployment manifest.
+#
+# Bind everything a checkpoint depends on into one versioned file. This is what answers
+# "why did the model that worked last month stop working" -- in practice the answer is
+# almost never the model, it is a calibration, a camera pose, a config default, or a
+# dependency that moved.
+checkpoint:
+  path: "gs://bucket/checkpoints/run_2026_01_15/50000"
+  sha256: ""
+  base_model: "pi05_base"
+  training_run: "wandb://entity/project/run_id"
+
+code:
+  repo: "https://github.com/Physical-Intelligence/openpi"
+  revision: ""              # git SHA, not "main"
+
+# Everything below must match what the checkpoint was TRAINED on, not what is convenient now.
+data_contract:
+  action_dim: 7
+  action_convention: "delta"        # or "absolute" -- a mismatch here is a silent failure
+  action_horizon: 50
+  control_fps: 50
+  state_dim: 7
+  normalization:
+    source: "computed_on_own_dataset"   # never "reused_from_pretrained"
+    q01_q99_sha256: ""
+  instruction_granularity: "per_subtask"   # or "per_episode"
+
+robot:
+  model: ""
+  urdf_revision: ""
+  joint_limits_source: "datasheet"     # never "dataset_percentiles"
+  gripper: ""
+  firmware: ""
+
+cameras:
+  - name: "top"
+    device: ""                         # serial or /dev/v4l/by-id path -- not /dev/video0
+    resolution: [1280, 720]
+    fps: 30
+    exposure_locked: true
+    pose: ""                           # extrinsics relative to base
+
+calibration:
+  file: ""
+  sha256: ""
+  performed_at: ""
+
+inference:
+  device: ""
+  latency_ms_p50: null
+  latency_ms_p99: null
+  execution_strategy: "sync"           # sync | temporal_ensembling | rtc
+  n_action_steps: 50
+  feasibility_margin: null             # (action_horizon / control_fps) / latency_p99
+
+safety:
+  limiter_process_separate: true
+  heartbeat_timeout_ms: null
+  stale_observation_max_age_ms: null
+  estop_tested_at: ""
+  risk_assessment_ref: ""
+
+verified:
+  by: ""
+  at: ""

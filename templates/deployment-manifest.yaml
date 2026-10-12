@@ -1,46 +1,44 @@
-# Deployment manifest.
-#
-# Bind everything a checkpoint depends on into one versioned file. This is what answers
-# "why did the model that worked last month stop working" -- in practice the answer is
-# almost never the model, it is a calibration, a camera pose, a config default, or a
-# dependency that moved.
+# Fill with the validated setup; null values are intentionally unspecified.
+# 填写经过验证的实际配置；null 表示尚未填写，不是默认推荐值。
 checkpoint:
-  path: "gs://bucket/checkpoints/run_2026_01_15/50000"
+  path: ""
   sha256: ""
-  base_model: "pi05_base"
-  training_run: "wandb://entity/project/run_id"
-
+  base_model: ""
+  training_run: ""
 code:
-  repo: "https://github.com/Physical-Intelligence/openpi"
-  revision: ""              # git SHA, not "main"
+  repo: ""
+  revision: ""  # Immutable revision / 固定版本
 
-# Everything below must match what the checkpoint was TRAINED on, not what is convenient now.
 data_contract:
-  action_dim: 7
-  action_convention: "delta"        # or "absolute" -- a mismatch here is a silent failure
-  action_horizon: 50
-  control_fps: 50
-  state_dim: 7
+  action_dim: null
+  action_convention: ""  # absolute | delta | velocity / 绝对、增量或速度
+  action_horizon: null   # Prediction steps / 预测步数
+  control_fps: null
+  state_dim: null
+  joint_order: []
+  units: ""
+  coordinate_frame: ""
+  gripper_convention: ""
   normalization:
-    source: "computed_on_own_dataset"   # never "reused_from_pretrained"
-    q01_q99_sha256: ""
-  instruction_granularity: "per_subtask"   # or "per_episode"
+    mode: ""
+    source: ""  # compatible pretrained or recomputed / 兼容预训练统计量或重算
+    statistics_sha256: ""
+  instruction_granularity: ""  # episode or supported subtask labels / 整段或受支持的子任务标签
 
 robot:
   model: ""
   urdf_revision: ""
-  joint_limits_source: "datasheet"     # never "dataset_percentiles"
+  joint_limits_source: ""  # Hardware/controller specification / 硬件与控制器规格
   gripper: ""
   firmware: ""
 
 cameras:
-  - name: "top"
-    device: ""                         # serial or /dev/v4l/by-id path -- not /dev/video0
-    resolution: [1280, 720]
-    fps: 30
-    exposure_locked: true
-    pose: ""                           # extrinsics relative to base
-
+  - name: ""
+    device: ""
+    resolution: []
+    fps: null
+    exposure_settings: ""
+    pose: ""
 calibration:
   file: ""
   sha256: ""
@@ -48,19 +46,23 @@ calibration:
 
 inference:
   device: ""
+  latency_boundary: ""
   latency_ms_p50: null
   latency_ms_p99: null
-  execution_strategy: "sync"           # sync | temporal_ensembling | rtc
-  n_action_steps: 50
-  feasibility_margin: null             # (action_horizon / control_fps) / latency_p99
+  measured_samples: null
+  execution_strategy: ""
+  n_action_steps: null       # Executed steps / 实际执行步数
+  buffer_at_refill_ms: null  # Executable commands remaining at refill launch / 补充推理启动时的剩余指令时长
+  refill_margin_ms: null     # Buffer minus measured refill time and jitter / 缓冲减去实测补充时间与抖动
 
 safety:
-  limiter_process_separate: true
+  monitor_component: ""
   heartbeat_timeout_ms: null
   stale_observation_max_age_ms: null
-  estop_tested_at: ""
+  timeout_response: ""
+  restart_conditions: ""
+  stop_test_record: ""
   risk_assessment_ref: ""
-
 verified:
   by: ""
   at: ""

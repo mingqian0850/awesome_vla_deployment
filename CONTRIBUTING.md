@@ -1,55 +1,33 @@
-# Contributing
+# Contributing / 参与维护
 
-The most useful contribution is **a failure you actually hit and how you fixed it.**
-Citations are cheap; that is not.
+## 中文
 
-## The three things worth adding
+学习页面按中文、英文成对维护。项目名、论文原题、代码标识符和命令可以保留原文；解释、练习、限制条件和排错步骤需同时更新两种语言。
 
-1. **A troubleshooting entry** (`data/failure-modes.yaml`). Format: symptom → candidate root
-   causes ranked by how often they turn out to be the answer → a one-step test that
-   distinguishes them → the fix. If you hit something and burned a day on it, that day is
-   worth more to the next person than any paper.
-2. **A measured number.** Which model, which hardware, what latency/VRAM/success-rate, and
-   what you changed. Negative results especially — "quantising this model broke the policy"
-   is a real finding.
-3. **A resource** (`data/*.yaml`) that a practitioner would use but search engines bury.
-   Chinese-language write-ups, engineering blog posts, and GitHub issue threads are
-   systematically under-indexed and disproportionately valuable.
+1. 资源修改写入 `data/*.yaml`，字段见 [SCHEMA.md](SCHEMA.md)。
+2. `README.md`、`README.en.md`、两种语言的资源目录和排错手册由生成器维护，不手工编辑。
+3. 其他课程与检查表修改时，同步更新对应的英文页和中文页。
+4. 保留来源和使用限制。模型、硬件、版本与实验协议不同的数字不能直接比较。
+5. 新增论文需通过 arXiv API 核对身份；`paper_title` 填写准确标题。
 
-## Rules
+提交前运行：
 
-- **One entry, one PR** is easiest to review but not required.
-- **Do not hand-edit `README.md`.** It is generated. Edit `data/*.yaml` and run
-  `python scripts/build_readme.py`.
-- **Every URL must resolve.** Run `python scripts/check_links.py` before pushing. CI enforces
-  it. A PR with a dead link will not merge.
-- **Do not invent references.** No placeholder IDs, no "arXiv:XXXX.XXXXX", no paper titles you
-  have not opened. This repo exists partly because a popular list in this space fabricated 27
-  arXiv IDs; that failure mode is the one thing we will not tolerate.
-- **Mark maturity honestly.** If you have only run it in sim, it is `research`, not
-  `production`. If nobody has touched it in a year, mark it `abandoned` and keep it — the
-  graveyard is information.
-- **Opinions are welcome and must be labelled.** Put them in a doc under `docs/` and start the
-  section with `> **Opinion.**`. Say what would change your mind.
+```bash
+python scripts/build_readme.py
+python scripts/build_readme.py --check
+python scripts/check_docs.py
+python scripts/check_links.py
+python scripts/check_papers.py
+```
 
-## What we deliberately do not cover
+## English
 
-To avoid duplicating work that already exists:
+Maintain learner pages in Chinese/English pairs. Project names, original paper titles, identifiers and commands may remain in their original form. Update explanations, exercises, use conditions and troubleshooting steps in both languages.
 
-- Model architecture tutorials and paper summaries → [VLA-Handbook], [Awesome-VLA].
-- Beginner "what is embodied AI" curricula → [every-embodied], [Xbotics Handbook].
-- Paper-level curation of data cleaning/annotation → [AIDASLab's list], [Awesome-Robot-Data-Engine].
+1. Edit resource records in `data/*.yaml`; see [SCHEMA.md](SCHEMA.md).
+2. Both READMEs, both resource catalogs and both troubleshooting guides are generated. Do not edit them directly.
+3. Update both versions of hand-written lessons and checklists together.
+4. Retain sources and use conditions. Numbers from different models, hardware, versions or protocols are not directly comparable.
+5. Verify new papers against the arXiv API and use the exact title in `paper_title`.
 
-Link to those instead. We cover **how to make it run on a real robot**.
-
-## Review
-
-A maintainer checks three things: does the link resolve, is the `maturity` honest, and would
-this have saved someone a day. That is the whole bar.
-
-[VLA-Handbook]: https://github.com/sou350121/VLA-Handbook
-[Awesome-VLA]: https://github.com/yueen-ma/Awesome-VLA
-[every-embodied]: https://github.com/datawhalechina/every-embodied
-[Xbotics Handbook]: https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook
-[AIDASLab's list]: https://github.com/AIDASLab/Awesome-VLA-Data-Collection-Synthesis-Curation
-[Awesome-Robot-Data-Engine]: https://github.com/chang-xinhai/Awesome-Robot-Data-Engine
+Run the commands above before submitting. Python tooling requires the packages in `requirements.txt`; the documentation build and validation require PyYAML. Diagnostic inference scripts additionally need their framework-specific environment.

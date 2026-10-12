@@ -1,104 +1,27 @@
-<div align="center">
+# VLA 学习与部署
 
-# awesome-vla-deployment
+**从一条机器人示教，到可评测的闭环策略。**
 
-**How to make a VLA policy actually run on a real robot.**
+中文 · [English](README.en.md)
 
-Not another paper index. Data collection, annotation, cleaning and sub-task segmentation;
-training recipes with numbers; and the deployment engineering — latency, chunking,
-quantisation, edge hardware, safety layers — that decides whether any of it works outside
-the lab.
+VLA（Vision-Language-Action，视觉语言动作模型）根据图像、任务指令及可选机器人状态预测动作。本仓库提供基础概念、数据与微调流程、部署教程、检查表和 {{TOTAL}} 条资源。
 
-{{TOTAL}} entries · {{MATURITY_LINE}}
+## 开始学习
 
-</div>
+| 阶段 | 阅读内容 | 动手产出 |
+| --- | --- | --- |
+| 1. 理解输入输出 | [基础概念与第一条数据流](docs/zh/00-start-here.md) | 画出观测到执行的路径，读懂一个样本的形状与单位 |
+| 2. 准备数据与微调 | [数据、动作约定与训练](docs/zh/01-data-and-training.md) | 一份数据检查记录和可复现的训练配置 |
+| 3. 连接推理与控制 | [实时推理](docs/zh/41-real-time-inference.md) | 延迟记录、动作队列时序图与超时行为 |
+| 4. 测量优化效果 | [优化与评测](docs/zh/40-optimization-matrix.md) | 同一协议下的基线与改进结果 |
+| 5. 检查运行条件 | [运行防护](docs/zh/43-safety.md) | 限位、超时与接管的验证记录 |
 
----
+## 查阅与实践
 
-> ### ⚠️ One list in this space should not be used
->
-> [`keon/awesome-physical-ai`](https://github.com/keon/awesome-physical-ai) (433 stars) is the
-> only curated list here with a literal `## Deployment` section, so search engines surface it
-> first when you look for deployment material. **Its Deployment and Safety sections contain 27
-> fabricated placeholder arXiv IDs** (`2505.XXXXX`, `2512.XXXXX`) attached to real-looking
-> paper names. A `grep -c XXXXX` over the file returns 27; over 32 other READMEs in this space
-> it returns 0. It last saw a commit in June 2026.
->
-> It is listed in the [Landscape](#landscape--what-already-exists) section, dated and
-> labelled, rather than quietly omitted — because you will find it, and you need to know.
+- [资源目录](docs/zh/resources.md)：数据、模型、微调、部署、评测与延伸课程。
+- [排错手册](docs/zh/troubleshooting.md)：12 类常见现象的检查与处理步骤。
+- [采集前检查表](checklists/zh/before-collecting-data.md)。
+- [部署前检查表](checklists/zh/before-deploying.md)。
+- [采集日志模板](templates/collection-log.csv) · [部署配置模板](templates/deployment-manifest.yaml)。
 
-## The problem this repo solves
-
-If you are training a VLA model, the papers are not your bottleneck. Your bottleneck is that
-the robot does the first motion of your chained task and then stops, that nobody has written
-down which normalisation statistics broke the policy when you changed arms, and that the
-only place your exact failure mode has ever been discussed is a Chinese blog post and a
-closed GitHub issue.
-
-So this repo is organised around **problems, not publications**. Every troubleshooting entry
-is symptom → ranked candidate causes → a test you can run in under an hour → the fix. Where a
-number appears, it names the hardware.
-
-## What we do not do
-
-To avoid duplicating work that already exists, we deliberately do not cover:
-
-| Not here | Go here instead |
-|---|---|
-| Model architecture tutorials, paper summaries | [VLA-Handbook](https://github.com/sou350121/VLA-Handbook) (Chinese, 662★), [Awesome-VLA](https://github.com/yueen-ma/Awesome-VLA) |
-| Beginner "what is embodied AI" curricula | [every-embodied](https://github.com/datawhalechina/every-embodied), [Xbotics Handbook](https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook) (Chinese) |
-| Paper-level curation of data cleaning / annotation | [AIDASLab](https://github.com/AIDASLab/Awesome-VLA-Data-Collection-Synthesis-Curation), [Awesome-Robot-Data-Engine](https://github.com/chang-xinhai/Awesome-Robot-Data-Engine) |
-| Middleware and standards catalogues | [natnew/awesome-physical-ai](https://github.com/natnew/awesome-physical-ai) |
-
-See the [Landscape](#landscape--what-already-exists) section for the full picture, including
-which lists are dead.
-
-## How to read the entries
-
-Every entry carries a `maturity` that says how much you can trust it, and a `verified` date
-that says when a human last opened the link.
-
-| maturity | meaning |
-|---|---|
-| `production` | runs on real hardware, actively maintained |
-| `research` | works in a lab, expect to adapt it |
-| `toy` | demo-grade, do not plan around it |
-| `abandoned` | no commits for ~12 months — **kept and dated on purpose**, because a graveyard is information |
-
-## Provenance
-
-1. Every URL is machine-checked. `scripts/check_links.py` runs on every push and weekly on a
-   schedule; a dead link fails the build.
-2. No fabricated references. Placeholder or unresolvable paper IDs are treated as a bug.
-3. Numbers are attributed to named hardware and model. "Faster" without a number is rejected.
-4. Negative results are wanted. "We tried INT8 and the policy broke" is a finding.
-5. `verified` is a claim about a human having opened the link, not a timestamp bump.
-
-## The written guides
-
-The hand-written pages, where the parts that no link can give you live:
-
-| Guide | What is in it |
-|---|---|
-| [The safety layer](docs/43-safety.md) | Why a learned policy cannot be a safety function, the six layers, and how ISO 12100 / 10218 / TS 15066 / 13849 map onto a VLA inference loop |
-| [Real-time inference](docs/41-real-time-inference.md) | The latency budget arithmetic — feasibility condition, observation-age equation, and the three execution strategies |
-| [The optimisation matrix](docs/40-optimization-matrix.md) | What to measure and how, so your numbers are comparable with someone else's |
-| [Checklist: before collecting data](checklists/before-collecting-data.md) | The decisions that are cheap now and expensive later |
-| [Checklist: before a policy drives anything](checklists/before-deploying.md) | Print it and tick it in front of the robot |
-
-## Quick start
-
-| You are... | Start at |
-|---|---|
-| about to collect your first dataset | [Data](#data--collection-annotation-cleaning-segmentation), then [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) for how much data people actually needed |
-| stuck: the policy does the first motion then stops | [Troubleshooting](#troubleshooting--symptom-to-root-cause-to-fix) |
-| fine-tuning pi0.5 on your own arm | [Training](#training--frameworks-recipes-action-representations) and [Training recipes](#training-recipes--the-numbers) |
-| deciding what hardware to buy | [Training recipes](#training-recipes--the-numbers) — the VRAM matrix is published |
-| moving from a working demo to a real deployment | [Deployment](#deployment--inference-timing-optimisation-edge-integration) and [Real-time inference](docs/41-real-time-inference.md) |
-| trying to get a number you can trust | [Evaluation](#evaluation) and [Optimisation matrix](docs/40-optimization-matrix.md) |
-| looking for a number nobody has published | [Deployment benchmarks](#deployment-benchmarks--measured-not-cited) — documented gaps with reasons |
-| about to conclude your data is the problem | [Counter-evidence](#counter-evidence--what-did-not-work-and-what-stops-working) — nine documented failures, including one where more data was explicitly not the fix |
-| choosing a base model or dataset to build on | [Licensing](#licensing--what-you-are-allowed-to-ship) — check this before a week of fine-tuning, not after |
-
----
-
+基础要求：能读写 Python，理解张量形状、训练与验证的区别，了解关节位置、速度和坐标系。第一步可以从已有数据和离线推理开始。

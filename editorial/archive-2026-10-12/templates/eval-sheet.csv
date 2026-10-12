@@ -1,0 +1,14 @@
+# Real-robot evaluation sheet.
+#
+# Rules that make the resulting number trustworthy:
+#   1. Fix the initial-state list BEFORE running any condition, and reuse it for every condition.
+#   2. Interleave conditions (A,B,A,B...) rather than running them in blocks -- this is how you
+#      avoid attributing thermal or calibration drift to your model change.
+#   3. Decide the trial count in advance. 20 trials cannot resolve a 10-point difference.
+#   4. Re-check calibration at the start and end of the session and record both hashes.
+#   5. Record failures, not just successes. The failure mode is the useful part.
+condition,trial,initial_state_id,checkpoint,calibration_hash,outcome,failure_mode,notes
+baseline,1,S01,ckpt_epoch_5000,abc123,success,,
+baseline,2,S02,ckpt_epoch_5000,abc123,failure,missed_grasp,"closed 3cm left of object"
+new_recipe,1,S01,ckpt_epoch_5000_r2,abc123,success,,
+new_recipe,2,S02,ckpt_epoch_5000_r2,abc123,success,,

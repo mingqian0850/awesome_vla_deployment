@@ -1,523 +1,377 @@
-section: "Training recipes — the numbers"
-order: 35
-description: >
-  Every figure here is quoted from a primary source that was fetched and read, not recalled.
-  Where the field does not publish a number, the field says so — a documented gap is a
-  finding, and inventing a plausible figure would defeat the purpose of this repo.
-
-  The honest summary: hardware requirements and hyperparameters ARE published; comparative
-  success-rate numbers for LoRA vs full fine-tune vs frozen backbone are NOT. That second
-  column is the most valuable empty space in this document.
+section: Fine-tuning and configuration
+section_zh: 微调与配置
+order: 30
+description: Action representations, statistics, adapters and checkpoint handling.
+description_zh: 动作表示、统计量、适配器与检查点处理。
 entries:
-  - id: openpi-requirements
-    name: "openpi — GPU / VRAM requirements"
-    url: "https://github.com/Physical-Intelligence/openpi"
-    type: docs
-    what: >
-      Quoted from the openpi README requirements table (single GPU, no model parallelism):
-      Inference > 8 GB (RTX 4090); Fine-Tuning with LoRA > 22.5 GB (RTX 4090);
-      Fine-Tuning full > 70 GB (A100 80GB / H100). Multi-GPU is supported via `fsdp_devices`
-      in the training config to reduce per-GPU memory; multi-node is not supported.
-    why: >
-      The most concrete public answer to "what hardware do I need" for pi0 / pi0.5. The
-      practical decision it settles for most teams: LoRA fits on a single 24 GB consumer card,
-      full fine-tuning does not — and the repo does not tell you what the success-rate
-      difference is, which is exactly the number you need to make that call.
-    maturity: production
-    verified: 2026-09
-    tags: [vram, hardware, pi0, pi05, recipe]
-    notes: "Quoted verbatim from the README section 'Requirements'."
-  - id: openpi-norm-stats
-    name: "openpi — normalisation statistics and when to reuse them"
-    url: "https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"
-    type: docs
-    what: >
-      First-party documentation of normalisation statistics: they are computed over the
-      training data and stored alongside the checkpoint, and can be reloaded for a new
-      fine-tune via `AssetsConfig(assets_dir=..., asset_id=...)`. Pre-training statistics are
-      provided per embodiment — `trossen` (ALOHA), `trossen_mobile`, `droid`, `franka`,
-      `ur5e`, `ur5e_dual`, `arx`, `arx_mobile`, `fibocom_mobile`.
-    why: >
-      This is the document that decides whether your fine-tune converges. It also corrects a
-      widespread piece of advice: openpi does NOT say "always recompute the statistics".
-      It says to **try both** reloading the pretrained statistics and computing fresh ones,
-      and keep whichever works better — reloading can be *better* when your robot matches a
-      pre-training embodiment, because the actions then land in a range the model finds
-      familiar.
-    maturity: production
-    verified: 2026-09
-    tags: [normalization, q01, q99, statistics, gotcha]
-    notes: >
-      Reusing pre-training statistics only works if your action space follows the same
-      convention. See the action-space entry below before assuming it applies to you.
-  - id: openpi-action-space
-    name: "openpi — action space and control frequency conventions"
-    url: "https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"
-    type: docs
-    what: >
-      dim_0:dim_5 = left arm joint angles (radians), dim_6 = left gripper, dim_7:dim_12 = right
-      arm joints, dim_13 = right gripper, dim_14:dim_15 = x-y base velocity (mobile only).
-      7-DoF robots such as Franka use the first 7 dimensions for joints and the 8th for the
-      gripper. Gripper positions are in [0.0, 1.0] with 0.0 fully open and 1.0 fully closed.
-      Control frequency is 20 Hz for UR5e and Franka, 50 Hz for ARX and Trossen (ALOHA).
-    why: >
-      The single highest-yield thing to check when porting a policy to a new arm. Two traps
-      hide here: the gripper convention is inverted relative to many drivers (0 = open, not
-      closed), and a control-frequency mismatch silently changes the physical duration of a
-      fixed-length action chunk.
-    maturity: production
-    verified: 2026-09
-    tags: [action-space, gripper, control-frequency, porting]
-
-  - id: droid-action-space
-    name: "DROID action space is joint VELOCITY, not position"
-    url: "https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md"
-    type: docs
-    what: >
-      "For DROID, we use the original DROID action configuration, with joint velocity actions
-      in the first 7 dimensions and gripper actions in the 8th dimension + a control frequency
-      of 15 Hz."
-    why: >
-      A concrete instance of the general delta/absolute/velocity confusion, documented by the
-      model authors. If you fine-tune on DROID data and deploy on a position-controlled arm —
-      or the reverse — the policy will produce motion that is wrong in a way that looks like a
-      bad model rather than a unit mismatch.
-    maturity: production
-    verified: 2026-09
-    tags: [action-space, velocity, droid, gotcha]
-
-  - id: lerobot-pi05-recipe
-    name: "LeRobot — pi0.5 fine-tuning recipe"
-    url: "https://huggingface.co/docs/lerobot/en/pi05"
-    type: docs
-    what: >
-      Reference command, sized for a single 80 GB GPU: `--batch_size=64`, `--steps=30000`,
-      `--policy.n_action_steps=10`, `--policy.gradient_checkpointing=true`,
-      `--policy.dtype=bfloat16`, `--num_workers=8`, `--save_freq=5000`. A second variant sets
-      `--policy.freeze_vision_encoder=true --policy.train_expert_only=true`.
-    why: >
-      The most directly copyable pi0.5 recipe that exists. The docs state the tradeoff for the
-      frozen variant explicitly — "less memory, at some cost in success rate" — which is
-      unusually honest, and is the only public statement of that tradeoff I found.
-    maturity: production
-    verified: 2026-09
-    tags: [recipe, pi05, hyperparameters, frozen-vlm]
-
-  - id: lerobot-pi0-recipe
-    name: "LeRobot — pi0 fine-tuning recipe"
-    url: "https://huggingface.co/docs/lerobot/en/pi0"
-    type: docs
-    what: >
-      Reference command: `--batch_size=32`, `--steps=3000`, `--policy.compile_model=true`,
-      `--policy.gradient_checkpointing=true`, `--policy.dtype=bfloat16`.
-    why: >
-      Note the step count — 3000, an order of magnitude below the pi0.5 recipe's 30000. If you
-      copy a step count between these two models you will either under-train or waste days.
-    maturity: production
-    verified: 2026-09
-    tags: [recipe, pi0, hyperparameters]
-
-  - id: openpi-idle-filter
-    name: "openpi — idle filter for DROID training"
-    url: "https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md"
-    type: docs
-    what: >
-      "By default, our openpi training recipe implements the same idle filter used to train all
-      pi-DROID models... we filter any time steps for which the next chunk of actions would be
-      largely idle." Implemented by pre-computing dataset indices
-      (`compute_droid_nonidle_ranges.py`) and passing `filter_dict_path` in the training config.
-    why: >
-      First-party confirmation that idle filtering is not a superstition — the model authors
-      built it into the default recipe. This is the strongest available evidence for the
-      episode-head idle hypothesis in the troubleshooting section, where a policy learns "at
-      the reset state, do not move".
-    maturity: production
-    verified: 2026-09
-    tags: [idle, filtering, sampling, droid]
-    notes: >
-      The published index list is only valid for the `droid/1.0.1` dataset. For your own data,
-      rerun the script — or compute the equivalent in `scripts/diag_dataset.py`, which reports
-      episode-head idle contamination directly.
-  - id: rtc-training
-    name: "Training-Time Action Conditioning for Efficient Real-Time Chunking"
-    url: "https://arxiv.org/abs/2512.05964"
-    type: paper
-    what: >
-      Trains the policy to accept an action prefix as conditioning, so that asynchronous
-      execution joins smoothly instead of jumping. Exposed in LeRobot as
-      `policy.rtc_training_max_delay`, set to the largest expected inference delay in
-      controller steps.
-    why: >
-      The difference between inference-time RTC, which patches over the chunk-boundary
-      discontinuity, and training-time conditioning, which removes it. If you know your
-      deployment latency at training time, this is the more principled fix.
-    maturity: research
-    verified: 2026-09
-    tags: [rtc, async, training, latency]
-
-  - id: openvla-ft-comparison
-    name: "Full FT vs LoRA vs frozen vs last-layer, with numbers"
-    url: "https://arxiv.org/abs/2406.09246"
-    type: benchmark
-    what: >
-      The one rigorous controlled comparison found, from the OpenVLA paper (Table 1), 33 rollouts
-      per strategy on Franka-Tabletop. Success rate / trainable parameters / VRAM at batch 16:
-      full fine-tune 69.7 ± 7.2 % / 7,188 M / 163 GB; LoRA rank 32 68.2 ± 7.5 % / 97.6 M (1.4 %) /
-      59.7 GB; LoRA rank 64 68.2 ± 7.8 % / 195 M / 60.5 GB; sandwich (vision encoder +
-      embeddings + last layer) 62.1 ± 7.9 % / 914 M / 64.0 GB; frozen vision encoder
-      47.0 ± 6.9 % / 6,760 M / 156 GB; last layer only 30.3 ± 6.1 % / 465 M / 51.4 GB.
-    why: >
-      Two conclusions that change how you configure a fine-tune. First, LoRA applied to all
-      linear layers matches full fine-tuning at 1.4 % of the parameters and roughly a third of
-      the memory — LoRA is not the problem people blame it for. Second, and more important:
-      **which modules you update dominates how many.** Freezing the vision encoder costs about
-      22 points and training only the last layer costs about 39. If you are choosing between
-      LoRA configurations, choose by which modules are in the target list, not by rank.
-    maturity: research
-    verified: 2026-09
-    tags: [lora, full-finetune, comparison, success-rate, benchmark, frozen-vision]
-    notes: >
-      The error bars overlap between full FT and LoRA rank 32, which is the honest reading: at
-      33 trials you cannot distinguish them. Both being ~68-70 % while frozen-vision is 47 %
-      is the signal.
-  - id: lerobot-lora-target-trap
-    name: "LeRobot's default LoRA target list is the trap, not LoRA"
-    url: "https://github.com/huggingface/lerobot/issues/4415"
-    type: discussion
-    what: >
-      LeRobot's default PEFT config targets only q/v projections inside the expert plus a handful
-      of projection layers, and sets `modules_to_save` to an empty list — the vision tower and
-      the language backbone are not in the target list. In a controlled SmolVLA / SO-101
-      experiment on an identical 3698-episode dataset, the default targets trained 742,656
-      parameters (0.16 %) and **every mid-training evaluation scored 0.0 %**, while full SFT was
-      already at 60 % on its first evaluation. Expanding the target list (three q/v families plus
-      fully training the five embodiment projections, rank 64, lr 3e-4) reached 94.0 / 84.0 /
-      98.0 % with 9,851,728 trainable parameters (2.1 %) — roughly 1/40 of full SFT's parameters
-      at matched task performance.
-    why: >
-      This is the highest-value practical finding in the training section, and it is a trap that
-      looks like a data problem. A fine-tune that sits at 0 % success while the loss decreases
-      normally is the signature, and the cause is a parameter budget you never chose
-      deliberately. It also corrects a widespread misconception: the quantity to match across
-      models is the trainable *fraction*, not the rank — the same rank 64 is 2.1 % of SmolVLA but
-      roughly 0.58 % of pi0, because the two models have very different numbers of attention
-      sites.
-    maturity: research
-    verified: 2026-09
-    tags: [lora, peft, target-modules, zero-success, trap, smolvla]
-    notes: >
-      Two command-surface details from the same source. Use `--peft.method_type` / `--peft.r` to
-      attach a new adapter to a clean base; setting `--policy.use_peft=true` instead makes the
-      framework treat `--policy.path` as an already-trained adapter directory, so pointing it at
-      a base model reads a base model as an adapter. And the acceptance test is to read
-      `num_learnable_params` out of the training log rather than trusting your CLI flags —
-      without `--policy.freeze_vision_encoder=false --policy.train_expert_only=false`, SmolVLA
-      reports about 100 M trainable instead of about 403 M.
-  - id: pi05-small-dataset-quantile
-    name: "pi0.5 fine-tunes worse than pi0 on small single-arm datasets"
-    url: "https://github.com/Physical-Intelligence/openpi/issues/763"
-    type: discussion
-    what: >
-      Reported case: pi0.5 fine-tuned with LoRA on the same single-arm data as pi0 performed
-      substantially worse (150k versus 80k steps, 4x A100 40 GB). Suspected contributors:
-      quantile normalisation computed on a small dataset shrinking the effective action range;
-      pi0.5's discretised state plus differing AdamW/EMA configuration; and LoRA applied to both
-      backbones freezing too much. The reported fix was to disable quantile normalisation for
-      small fine-tunes (`use_quantile_norm=False`), align batch size and learning rate with the
-      `pi05_libero` recipe rather than the pi0 defaults, and consider full fine-tuning or
-      expert-only training instead of LoRA everywhere.
-    why: >
-      Directly relevant to the most common real symptom in this repo — a policy that produces
-      small or hesitant motion. If quantile normalisation on a small dataset compresses the
-      action range, then both the training targets and the decoded outputs are scaled down, and
-      the robot moves less than it should while the loss looks healthy. Check this before
-      concluding that your data is bad.
-    maturity: research
-    verified: 2026-09
-    tags: [pi05, loRA, quantile, normalization, small-dataset, action-range]
-    sources: ["https://github.com/Physical-Intelligence/openpi/issues/763",
-              "https://github.com/Physical-Intelligence/openpi/issues/692"]
-
-  - id: pi05-config-drift
-    name: "pi0.5 at 1% on LIBERO: config drift, not the model"
-    url: "https://github.com/Physical-Intelligence/openpi/issues/711"
-    type: discussion
-    what: >
-      Reported case of pi0.5 scoring about 1 % on LIBERO against a much higher paper number. The
-      diagnosis was configuration drift: LoRA, `discrete_state_input=False`, a non-standard
-      action horizon, and hand-computed statistics that differed from the checkpoint's — plus
-      ad-hoc learning-rate modifications.
-    why: >
-      The recommended remedy generalises to every fine-tune in this space: use the shipped config
-      verbatim first, confirm it reproduces, then change exactly one thing at a time. And diff
-      your own `TrainConfig` field by field against the reference config rather than assuming
-      your CLI flags produced the config you intended.
-    maturity: research
-    verified: 2026-09
-    tags: [pi05, config-drift, libero, debugging]
-
-  - id: checkpoint-selection
-    name: "How people actually decide a fine-tune is done"
-    url: "https://github.com/Physical-Intelligence/openpi"
-    type: discussion
-    what: >
-      Collected protocols, each read from its own source rather than recalled: OpenVLA-OFT uses
-      an L1 action error threshold of about 0.01 with a plateau, evaluating every 50k steps —
-      with the reported exception that on LIBERO-Goal, 50k steps beat 150k. GR00T reports
-      open-loop MSE falling 87.5 → 25.4 → 13.2 → 10.0 at 500 / 1000 / 1500 / 2000 steps with no
-      published target MSE. RDT-1B tracks `overall_avg_sample_mse`. LeRobot guidance is 5-10
-      epochs. openpi recipes use fixed step budgets.
-    why: >
-      Nobody publishes a criterion, only conventions — and the LIBERO-Goal exception matters
-      because it means "train longer" is not reliably better. The useful move is to write your
-      own stopping rule down before you start, because the alternative is choosing the checkpoint
-      whose number you liked, which is how a fine-tune's reported success rate becomes
-      unreproducible.
-    maturity: research
-    verified: 2026-09
-    tags: [checkpoint, stopping-rule, training-length, protocol]
-
-  - id: evaluation-noise-floor
-    name: "Run-to-run noise floors you should measure before comparing anything"
-    url: "https://github.com/NVIDIA/Isaac-GR00T"
-    type: discussion
-    what: >
-      Reported noise levels: GR00T shows roughly 5-6% run-to-run variation, and about ±5%
-      sampling noise at 100 episodes.
-    why: >
-      A five-point noise floor means a five-point improvement is not a result. Measure your own
-      floor by running the identical configuration twice before you compare two configurations —
-      it is one of the cheapest experiments available and it prevents most of the false
-      conclusions in this space.
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, noise, reproducibility, statistics]
-
-  - id: horizon-ablations
-    name: "Predict long, execute short — the two horizon ablations, and why they are different knobs"
-    url: "https://arxiv.org/abs/2506.01844"
-    type: benchmark
-    what: >
-      SmolVLA is the only public ablation of **both** horizons on the same suite.
-      Chunk size (prediction horizon), Table 12: 1 -> 50.0%, 10 -> 84.0%, 30 -> 78.5%,
-      50 -> 80.3%, 100 -> 74.5%.
-      Execution depth (how many of the predicted steps you actually send), Table 13:
-      1 -> 80.3%, 10 -> 82.8%, 30 -> 70.8%, 50 -> 51.8%.
-      Cross-policy convergence on the ratio: Diffusion Policy uses 16/8, RTC's real-world
-      setting uses a prediction horizon of 50 with a minimum execution of 25, GR00T uses 40/16.
-    why: >
-      Two practice-changing readings, and they contradict the two reflexes people have.
-      **The chunk-size curve is an inverted U with a wide flat top between 10 and 50** — there
-      is no magic number, but 1 and 100 are both clearly worse, so "as long as possible" and
-      "one step at a time" are both wrong.
-      **The execution-horizon curve is steeper** (80.3, 82.8, 70.8, 51.8), and executing the
-      whole predicted chunk is the worst setting tested. So the rule is **predict long, execute
-      short**: the prediction horizon is a capacity knob and the execution horizon is a
-      responsiveness knob, and they trade off in opposite directions.
-      The cross-policy ratio gives you a defensible default: `H ~= 2 * s`. And a corollary that
-      is easy to get backwards — **if you adopt RTC, you extend the prediction horizon, not the
-      execution horizon**; RTC's guidance needs a long enough chunk to have something to
-      reconcile against (roughly 32 or more), while the execution horizon is exactly what it is
-      trying to keep short.
-    maturity: research
-    verified: 2026-09
-    tags: [horizon, chunking, execution-depth, ablation, benchmark, rtc]
-    notes: >
-      A caution about reading the paper past the tables: SmolVLA's own real-world setup executes
-      the **full** chunk synchronously while its simulation evaluation re-observes every step.
-      That is an internal inconsistency, not a recommendation — do not copy it.
-  - id: normalization-three-regimes
-    name: "Three normalisation regimes inside one model family"
-    url: "https://arxiv.org/abs/2506.01844"
-    type: docs
-    what: >
-      Within the pi/SmolVLA ecosystem: SmolVLA uses mean/std, pi0 uses z-score, and pi0.5 uses
-      quantiles. Three different regimes, one family, and in practice one repository.
-    why: >
-      Sharpens the advice that you must match the mode to the checkpoint: this is not a
-      one-off mismatch between two projects, it is three live cases inside a single lineage.
-      Combined with the finding that quantile is only marginally better than mean/std once the
-      action convention is correct, the practical rule is: read the mode off the checkpoint and
-      do not have an opinion about which is better.
-    maturity: production
-    verified: 2026-09
-    tags: [normalization, mean-std, z-score, quantile, pi0, pi05, smolvla]
-
-  - id: fsq-tokenizer-trap
-    name: "openpi's fsq_tokenizer.py is not the pi0 action tokenizer"
-    url: "https://github.com/Physical-Intelligence/openpi"
-    type: repo
-    what: >
-      `fsq_tokenizer.py` exists in the openpi tree but its own header states it is for RoboArena
-      baselines. It is **not** the pi0 action tokenizer, which is FAST (DCT plus BPE). The
-      distinct action-VQ alternative in this space is VQ-BeT, which reports roughly 5x faster
-      inference than Diffusion Policy and does not use action chunking.
-    why: >
-      A reader skimming the repository for "how does pi0 tokenise actions" will find this file
-      and conclude the wrong thing. Recorded because it is cheap to state and expensive to
-      discover — you would build a training pipeline around the wrong tokenizer before noticing.
-    maturity: production
-    verified: 2026-09
-    tags: [tokenizer, fast, fsq, vqbet, disambiguation, trap]
-  - id: lerobot-relative-action-floor
-    name: "LeRobot relative-action support has a version floor"
-    url: "https://github.com/huggingface/lerobot/pull/2970"
-    type: docs
-    what: >
-      `RelativeActionsProcessorStep` and the `--operation.relative_action` /
-      `--policy.use_relative_actions` flags landed in PR #2970, merged 2026-04-01.
-    why: >
-      On an older install you will find documentation for a feature your code does not have,
-      which is a confusing failure mode: the flag is accepted-looking in the docs and absent in
-      the source. Pin your revision and check the flag exists before following a tutorial —
-      including this one. More generally, most of the practical knowledge in this repo is
-      attached to a specific commit, and the entry-level `verified` date is not a version.
-    maturity: production
-    verified: 2026-09
-    tags: [versioning, relative-actions, flag, gotcha]
-  - id: vram-boundary-counterevidence
-    name: "The 22.5 GB LoRA boundary, and what actually happens at 24 GB"
-    url: "https://github.com/Physical-Intelligence/openpi/issues/379"
-    type: discussion
-    what: >
-      openpi's requirements table gives fine-tuning with LoRA as "> 22.5 GB". The field reports
-      are messier: a user on a 24 GB RTX 4090 OOMs on the **first step** of a pi0-FAST LoRA
-      configuration, and a practitioner summarises the practical floor as "8 GB inference,
-      24 GB to fine-tune". Separately, an OpenVLA-OFT user measured about 6 s per step on both
-      1 and 4 A100s — distributed data parallel produced no speedup at all.
-    why: >
-      Two things worth planning around. The published VRAM number is a boundary rather than a
-      comfortable figure: ">22.5 GB" and "24 GB" are close enough that whether you fit depends on
-      the batch size, sequence length and which variant you picked, so treat 24 GB as a
-      try-it-and-see rather than a yes. And the DDP result is a reminder that multi-GPU does not
-      automatically mean faster — it replicates the model, so it reduces wall-clock only when the
-      per-step work is genuinely parallelisable and the bottleneck is not elsewhere.
-    maturity: research
-    verified: 2026-09
-    tags: [vram, hardware, lora, oom, ddp, multi-gpu]
-  - id: fine-tune-cost-anchor
-    name: "What a fine-tune actually costs — one worked example"
-    url: "https://docs.picknik.ai/how_to/vla/train_a_vla_policy/"
-    type: blog
-    what: >
-      A published pi0.5 LoRA run at 50k steps cost approximately $6.56 on an L40S and $9.88 on
-      an A100 80 GB at 2026-09 provider rates. For scale, OpenVLA pretraining used 21,500
-      A100-hours — three to four orders of magnitude more.
-    why: >
-      Fine-tuning is cheap enough that the dominant cost of a project is not compute, it is the
-      days you spend collecting data and debugging. That reframes decisions: an extra ablation
-      run costs single-digit dollars, so run it rather than arguing about it, and spend the
-      saved time on the data pipeline.
-    maturity: production
-    verified: 2026-09
-    tags: [cost, budget, lora, planning]
-    notes: >
-      **The dataset behind that run is simulated.** It is MuJoCo-generated by a scripted IK
-      oracle rather than collected on a real robot, so the figure is a valid **compute and cost**
-      reference and is **not** evidence that a real pi0.5 fine-tune needs that much data or that
-      much wall-clock. We nearly published it as a data-requirement data point; the distinction
-      matters because cost and data volume are the two things people most want to infer from a
-      worked example, and this example only supports one of them.
-      Prices also move, and a rendered pricing page and the provider's own machine-readable
-      catalogue can disagree. Prefer the machine-readable catalogue: for Hugging Face Jobs, the
-      hardware API reports `a100-large` at $0.041667 per minute, which is $2.50 per hour. We
-      deliberately publish no provider rate table — it would rot faster than anything else here.
-  - id: multi-gpu-not-auto-scaled
-    name: "Multi-GPU does not rescale your learning rate or step count"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/multi_gpu_training.mdx"
-    type: docs
-    what: "LeRobot's multi-GPU training documentation, which notes that learning rate and step count are not automatically adjusted for the number of devices."
-    why: >
-      Moving from one GPU to eight changes your effective batch size, and therefore the training
-      dynamics, without changing the numbers you passed. If you scale hardware between runs and
-      compare the results, you have changed two things at once. Keep the effective batch size
-      fixed when you add devices, or treat the change as a hyperparameter search rather than a
-      speedup.
-    maturity: production
-    verified: 2026-09
-    tags: [multi-gpu, learning-rate, batch-size, reproducibility]
-  - id: demos-is-the-wrong-unit
-    name: "Demos is the wrong unit — convert to minutes of data"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/il_robots.mdx"
-    type: docs
-    what: >
-      ACT's headline requirement of 50 demonstrations sounds precise until you convert it: at
-      8-14 seconds per episode, 50 episodes is 400-700 timesteps at 50 Hz, which is
-      **10-20 minutes of data per task**. The episode count is a proxy for that volume, and the
-      proxy moves with your episode length.
-    why: >
-      This is the correction that makes data-requirement numbers comparable across sources,
-      and almost nobody states it. "50 episodes" from a lab with 8-second episodes and
-      "50 episodes" from a lab with 60-second episodes differ by a factor of seven in actual
-      data, so the two figures are not the same claim even though they look identical in a
-      table. When you read a requirement, convert it; when you report one, report both.
-      It also reframes collection planning usefully: you are buying minutes of demonstration,
-      and episode length is a lever you control.
-    maturity: research
-    verified: 2026-09
-    tags: [data-volume, episode-length, demos, planning, units]
-  - id: aalto-execution-horizon
-    name: "The statistically strongest evidence for executing short: h=10-15, not 50"
-    url: "https://aaltodoc.aalto.fi/items/711175d6-6d75-4751-af72-b055bd8cd4db/full"
-    type: benchmark
-    what: >
-      Pooled over five checkpoints at **n = 500 paired episodes per horizon** (binomial standard
-      error 2.2), the success curve is unimodal with a plateau at an execution horizon of **10 to
-      15, reaching 51%**, with every other grid point significantly worse under a paired exact
-      binomial test (p <= 0.005), and it **falls to 34% at the fully open-loop horizon of 50**.
-      The same work reports that an offline trajectory-similarity metric reliably *selects* that
-      horizon, so you can choose it **without running rollouts**.
-    why: >
-      This upgrades "predict long, execute short" from a plausible heuristic to a tested finding.
-      We already carry SmolVLA's Table 13, which points the same way but is a single-run
-      ablation; this is the version with paired sampling and an explicit significance test, and
-      it puts a number on the cost of getting it wrong: **halving success if you execute the
-      whole chunk.**
-      The offline-selectability result is the practically useful half. Execution horizon is
-      normally something you sweep with robot time, and here is evidence you can estimate it from
-      trajectories you already have.
-    maturity: research
-    verified: 2026-09
-    tags: [execution-horizon, chunking, significance, offline-selection, benchmark]
-    notes: >
-      Read alongside ACT's ablation (1% at k=1 rising to 44% at k=100, degrading at k=200 and
-      400) and you get an apparent contradiction: ACT peaks at 100 while these policies peak at
-      10-15. It is not a contradiction — the optimum scales with the control rate and the length
-      of the motion primitive, not with the paper you copied. Scale your horizon to your own
-      control loop.
-  - id: openvla-demo-replay
-    name: "9-24% of a benchmark dataset failed its own success criterion"
-    url: "https://arxiv.org/abs/2406.09246"
-    type: paper
-    what: >
-      To train on LIBERO, the OpenVLA authors replayed **every demonstration** and discarded the
-      ones that failed their own task: 68 of 500 on LIBERO-Spatial, 46 of 500 on
-      LIBERO-Object, 72 of 500 on LIBERO-Goal, and 121 of 500 on LIBERO-Long. Two related
-      details from the same passage: they had to **rotate the third-person images 180 degrees**
-      because LIBERO returns them upside-down on their hardware, and they trained on the static
-      third-person camera only.
-    why: >
-      A benchmark dataset, published by competent people, with 9 to 24 percent of its
-      demonstrations failing the task they are labelled as succeeding at. If you are blaming your
-      model for a poor result on public data, this is the prior that should make you replay your
-      own data first. It also generalises: the cheapest quality gate in this entire repo is to
-      replay every demonstration in simulation and check whether it actually solves the task —
-      and it is a gate almost nobody runs before training.
-      The 180-degree rotation is a reminder that visual conventions are undocumented and silent,
-      the same failure family as the gripper polarity entry.
-    maturity: production
-    verified: 2026-09
-    tags: [data-quality, replay-check, libero, benchmark, prior]
-  - id: checkpoint-write-oom
-    name: "OOM while writing a checkpoint, hours into a healthy-looking run"
-    url: "https://github.com/moojink/openvla-oft/issues/118"
-    type: discussion
-    what: "Reported out-of-memory failure occurring while writing checkpoints at step 100,000, rather than during the training step itself."
-    why: >
-      A late-failure class worth knowing about, because it appears long after you have concluded
-      the configuration works. Memory pressure at save boundaries is not visible in the step-time
-      or loss curves, so the only defence is to size the run for peak memory including the save
-      path, or to test a save early rather than discovering the limit at hour twenty.
-    maturity: research
-    verified: 2026-09
-    tags: [oom, checkpointing, memory, late-failure]
+- id: openpi-requirements
+  name: openpi — GPU / VRAM requirements
+  url: https://github.com/Physical-Intelligence/openpi
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - vram
+  - hardware
+  - pi0
+  - pi05
+  - recipe
+  what: openpi documents GPU memory requirements for inference, LoRA and full fine-tuning; practical use
+    also depends on configuration and overhead.
+  what_zh: openpi 记录推理、LoRA 与全量微调的显存要求；实际占用还受配置和额外开销影响。
+  notes: The recorded single-GPU table gives >8 GB for inference, >22.5 GB for LoRA and >70 GB for full
+    fine-tuning. Check the source revision and leave room for data, optimizer and saving overhead.
+  notes_zh: 历史单 GPU 表给出推理 >8 GB、LoRA >22.5 GB、全量微调 >70 GB。需核对来源版本，并为数据、优化器和保存操作预留空间。
+- id: openpi-norm-stats
+  name: openpi — normalisation statistics and when to reuse them
+  url: https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - normalization
+  - q01
+  - q99
+  - statistics
+  - gotcha
+  what: Normalization statistics are stored with checkpoints; matching embodiment statistics can be reused
+    or compared against newly computed statistics.
+  what_zh: 归一化统计量与检查点一起保存；可复用匹配机器人形态的统计量，并与重新计算的结果对比。
+- id: openpi-action-space
+  name: openpi — action space and control frequency conventions
+  url: https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - action-space
+  - gripper
+  - control-frequency
+  - porting
+  what: Documents robot-specific joint ordering, gripper conventions and control frequencies; read the
+    configuration for the actual embodiment.
+  what_zh: 记录不同机器人的关节顺序、夹爪约定和控制频率；需要读取实际机器人形态的配置。
+- id: droid-action-space
+  name: DROID — action representation
+  url: https://github.com/Physical-Intelligence/openpi/blob/main/docs/norm_stats.md
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - action-space
+  - velocity
+  - droid
+  - gotcha
+  what: DROID uses seven joint-velocity actions plus a gripper action at 15 Hz in the cited openpi configuration.
+  what_zh: 所引用的 openpi 配置中，DROID 使用七维关节速度加一维夹爪动作，控制频率为 15 Hz。
+- id: lerobot-pi05-recipe
+  name: LeRobot — pi0.5 fine-tuning recipe
+  url: https://huggingface.co/docs/lerobot/en/pi05
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - recipe
+  - pi05
+  - hyperparameters
+  - frozen-vlm
+  what: Reference pi0.5 fine-tuning configuration covering batch size, steps, precision, checkpointing
+    and expert-only variants.
+  what_zh: pi0.5 微调参考配置，包含 batch size、步数、精度、梯度检查点及仅训练专家的变体。
+- id: lerobot-pi0-recipe
+  name: LeRobot — pi0 fine-tuning recipe
+  url: https://huggingface.co/docs/lerobot/en/pi0
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - recipe
+  - pi0
+  - hyperparameters
+  what: Reference pi0 fine-tuning configuration with compilation, gradient checkpointing and BF16 settings.
+  what_zh: pi0 微调参考配置，包含编译、梯度检查点和 BF16 设置。
+- id: openpi-idle-filter
+  name: openpi — idle filter for DROID training
+  url: https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - idle
+  - filtering
+  - sampling
+  - droid
+  what: DROID training recipe filters timesteps whose subsequent action chunks are largely idle.
+  what_zh: DROID 训练配方过滤后续动作块大部分为空闲动作的时间步。
+- id: rtc-training
+  name: Training-Time Action Conditioning for Efficient Real-Time Chunking
+  url: https://arxiv.org/abs/2512.05964
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - rtc
+  - async
+  - training
+  - latency
+  what: Trains action-prefix conditioning for RTC; maximum expected inference delay is expressed in controller
+    steps.
+  what_zh: 为 RTC 训练动作前缀条件输入；最大预期推理延迟以控制步数表示。
+- id: openvla-ft-comparison
+  name: OpenVLA — fine-tuning strategy comparison
+  url: https://arxiv.org/abs/2406.09246
+  type: benchmark
+  maturity: research
+  verified: 2026-09
+  tags:
+  - lora
+  - full-finetune
+  - comparison
+  - success-rate
+  - benchmark
+  - frozen-vision
+  what: OpenVLA compares full fine-tuning, LoRA and partial freezing under a shared evaluation protocol,
+    including memory and trainable parameters.
+  what_zh: OpenVLA 在同一评测协议下比较全量微调、LoRA 与部分冻结，并报告显存和可训练参数量。
+- id: lerobot-lora-target-trap
+  name: SmolVLA — LoRA target modules
+  url: https://github.com/huggingface/lerobot/issues/4415
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - lora
+  - peft
+  - target-modules
+  - zero-success
+  - trap
+  - smolvla
+  what: A SmolVLA experiment reports that LoRA target-module coverage changed rollout success substantially;
+    rank alone does not define the adapter.
+  what_zh: 一项 SmolVLA 实验报告 LoRA 目标模块的覆盖范围显著影响执行成功率；仅设置 rank 不能完整定义适配器。
+- id: pi05-small-dataset-quantile
+  name: pi0.5 fine-tunes worse than pi0 on small single-arm datasets
+  url: https://github.com/Physical-Intelligence/openpi/issues/763
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - pi05
+  - loRA
+  - quantile
+  - normalization
+  - small-dataset
+  - action-range
+  sources:
+  - https://github.com/Physical-Intelligence/openpi/issues/763
+  - https://github.com/Physical-Intelligence/openpi/issues/692
+  what: A reported small-data pi0.5 regression involves normalization and training settings; the suggested
+    changes require controlled comparison.
+  what_zh: 一例小数据 pi0.5 性能退化涉及归一化与训练设置；建议修改仍需通过受控对比验证。
+- id: pi05-config-drift
+  name: pi0.5 — configuration-drift report
+  url: https://github.com/Physical-Intelligence/openpi/issues/711
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - pi05
+  - config-drift
+  - libero
+  - debugging
+  what: A low LIBERO result was associated with differences in adapters, state input, horizons and statistics
+    from the reference configuration.
+  what_zh: 一例 LIBERO 低成功率与适配器、状态输入、动作步数和统计量偏离参考配置有关。
+- id: checkpoint-selection
+  name: Checkpoint evaluation protocols
+  url: https://github.com/Physical-Intelligence/openpi
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - checkpoint
+  - stopping-rule
+  - training-length
+  - protocol
+  what: Examples of checkpoint selection using validation errors, fixed budgets and rollout evaluation;
+    metrics are not interchangeable across frameworks.
+  what_zh: 使用验证误差、固定预算和 rollout 评测选择检查点的实例；不同框架的指标不能直接互换。
+- id: evaluation-noise-floor
+  name: Evaluation variability
+  url: https://github.com/NVIDIA/Isaac-GR00T
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - noise
+  - reproducibility
+  - statistics
+  what: Reported evaluation variation illustrates the need to measure run-to-run and finite-sample uncertainty
+    on the actual setup.
+  what_zh: 已报告的评测波动说明，需要在实际配置上测量运行间差异及有限样本不确定性。
+- id: horizon-ablations
+  name: SmolVLA — prediction and execution horizons
+  url: https://arxiv.org/abs/2506.01844
+  type: benchmark
+  maturity: research
+  verified: 2026-09
+  tags:
+  - horizon
+  - chunking
+  - execution-depth
+  - ablation
+  - benchmark
+  - rtc
+  what: SmolVLA separately studies prediction horizon and executed steps; these are distinct parameters
+    with task-dependent effects.
+  what_zh: SmolVLA 分别研究预测步数与实际执行步数；它们是不同参数，影响取决于任务。
+- id: normalization-three-regimes
+  name: Normalization modes
+  url: https://arxiv.org/abs/2506.01844
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - normalization
+  - mean-std
+  - z-score
+  - quantile
+  - pi0
+  - pi05
+  - smolvla
+  what: Model families and recipes use different normalization modes; inspect the constructed configuration
+    rather than inferring it from the model name.
+  what_zh: 不同模型与配方使用不同归一化方式；应检查最终配置，不能只凭模型名称推断。
+- id: fsq-tokenizer-trap
+  name: openpi — FSQ and FAST tokenizers
+  url: https://github.com/Physical-Intelligence/openpi
+  type: repo
+  maturity: production
+  verified: 2026-09
+  tags:
+  - tokenizer
+  - fast
+  - fsq
+  - vqbet
+  - disambiguation
+  - trap
+  what: openpi's fsq_tokenizer.py serves RoboArena baselines. FAST is a distinct DCT/BPE action tokenizer
+    used by FAST model variants.
+  what_zh: openpi 的 fsq_tokenizer.py 用于 RoboArena 基线；FAST 是另一种基于 DCT/BPE 的动作 tokenizer，用于 FAST 模型变体。
+- id: lerobot-relative-action-floor
+  name: LeRobot relative-action support has a version floor
+  url: https://github.com/huggingface/lerobot/pull/2970
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - versioning
+  - relative-actions
+  - flag
+  - gotcha
+  what: 'Relative-action processors and flags require a compatible LeRobot revision; the recorded implementation
+    arrived through PR #2970.'
+  what_zh: '相对动作处理器与参数需要兼容的 LeRobot 版本；记录中的实现由 PR #2970 引入。'
+- id: vram-boundary-counterevidence
+  name: LoRA — practical memory limits
+  url: https://github.com/Physical-Intelligence/openpi/issues/379
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - vram
+  - hardware
+  - lora
+  - oom
+  - ddp
+  - multi-gpu
+  what: User reports show a nominal LoRA memory requirement can still exceed a 24 GB GPU in specific configurations.
+  what_zh: 用户报告显示，在特定配置下，满足名义 LoRA 显存要求的 24 GB GPU 仍可能溢出。
+- id: fine-tune-cost-anchor
+  name: Fine-tuning cost example
+  url: https://docs.picknik.ai/how_to/vla/train_a_vla_policy/
+  type: blog
+  maturity: production
+  verified: 2026-09
+  tags:
+  - cost
+  - budget
+  - lora
+  - planning
+  what: A documented fine-tuning run provides a historical cost example; billing depends on provider,
+    hardware, duration and current rates.
+  what_zh: 一项微调记录提供历史成本示例；实际账单取决于服务商、硬件、时长和当前价格。
+- id: multi-gpu-not-auto-scaled
+  name: Distributed training configuration
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/multi_gpu_training.mdx
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - multi-gpu
+  - learning-rate
+  - batch-size
+  - reproducibility
+  what: Distributed training does not automatically rescale learning rate or step count; DDP normally
+    replicates model state per device.
+  what_zh: 分布式训练不会自动调整学习率或步数；DDP 通常在每张设备上复制模型状态。
+- id: demos-is-the-wrong-unit
+  name: Demonstration volume and coverage
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/il_robots.mdx
+  type: docs
+  maturity: research
+  verified: 2026-09
+  tags:
+  - data-volume
+  - episode-length
+  - demos
+  - planning
+  - units
+  what: Record episode count together with duration, control frequency and task coverage; equal episode
+    counts can represent different amounts of data.
+  what_zh: 同时记录 episode 数量、时长、控制频率与任务覆盖；相同 episode 数量可能对应不同数据量。
+- id: aalto-execution-horizon
+  name: Execution-horizon paired comparison
+  url: https://aaltodoc.aalto.fi/items/711175d6-6d75-4751-af72-b055bd8cd4db/full
+  type: benchmark
+  maturity: research
+  verified: 2026-09
+  tags:
+  - execution-horizon
+  - chunking
+  - significance
+  - offline-selection
+  - benchmark
+  what: A paired-trial study compares execution horizons; its optimum is specific to the tested checkpoints
+    and tasks.
+  what_zh: 一项配对试验研究比较不同执行步数；最佳值仅对应所测检查点与任务。
+- id: openvla-demo-replay
+  name: OpenVLA — LIBERO demonstration replay
+  url: https://arxiv.org/abs/2406.09246
+  type: paper
+  maturity: production
+  verified: 2026-09
+  tags:
+  - data-quality
+  - replay-check
+  - libero
+  - benchmark
+  - prior
+  what: OpenVLA authors replayed LIBERO demonstrations and removed episodes that did not satisfy the task
+    success criterion.
+  what_zh: OpenVLA 作者回放 LIBERO 示教，并剔除不满足任务成功标准的 episode。
+- id: checkpoint-write-oom
+  name: Checkpoint-saving memory failure
+  url: https://github.com/moojink/openvla-oft/issues/118
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - oom
+  - checkpointing
+  - memory
+  - late-failure
+  what: A training run can run out of memory during checkpoint saving even when ordinary training steps
+    fit.
+  what_zh: 正常训练步的显存足够时，保存检查点仍可能发生显存溢出。

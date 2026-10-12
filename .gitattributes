@@ -1,0 +1,2 @@
+# Historical snapshots keep their original terminal blank lines.
+editorial/archive-2026-10-12/** whitespace=-blank-at-eof

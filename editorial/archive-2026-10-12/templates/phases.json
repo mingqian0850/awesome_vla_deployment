@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "Sub-task segmentation for chained tasks, consumed by scripts/diag_dataset.py --phases-json.",
+    "Ranges are [start_frame, end_frame_exclusive, label] within ONE episode, frame indices",
+    "as stored in the dataset's frame_index column.",
+    "",
+    "Why this matters: if the same observation appears in two different phases and requires",
+    "different actions, the policy cannot learn both. Labelling each frame with its CURRENT",
+    "sub-task gives the policy an explicit phase variable and is the single highest-value fix",
+    "for 'it only does the first motion'. See the Troubleshooting section of the README.",
+    "",
+    "Segment boundaries do not need to be perfect -- they need to be consistent. If you are",
+    "segmenting by hand, use the moment the gripper state changes or the object starts moving,",
+    "and apply the same rule to every episode."
+  ],
+  "0": [[0, 50, "reach"], [50, 100, "grasp_and_lift"], [100, 150, "place_and_release"]],
+  "1": [[0, 48, "reach"], [48, 96, "grasp_and_lift"], [96, 152, "place_and_release"]]
+}

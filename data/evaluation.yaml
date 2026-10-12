@@ -1,194 +1,168 @@
-section: "Evaluation"
-order: 50
-description: >
-  Most labs evaluate ad hoc, then report point estimates from a handful of trials. These
-  entries are the tools and the protocol material for producing numbers you can act on.
+section: Evaluation
+section_zh: 评测
+order: 60
+description: Task protocols, sample counts and failure analysis.
+description_zh: 任务协议、样本量与失败分析。
 entries:
-  - id: vla-eval-harness
-    name: "allenai/vla-evaluation-harness"
-    url: "https://github.com/allenai/vla-evaluation-harness"
-    type: repo
-    what: "A unified harness for evaluating VLA models across environments."
-    why: "Reduces the amount of bespoke evaluation plumbing you have to write, which is usually where evaluation rigour is lost."
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, harness]
-  - id: simplerenv
-    name: "SimplerEnv"
-    url: "https://github.com/simpler-env/SimplerEnv"
-    type: repo
-    what: "Simulated environments designed to correlate with real-robot performance for manipulation policies."
-    why: >
-      Useful as a cheap screening filter between training runs so you do not spend robot time
-      on obviously bad checkpoints. Treat it as a screen, not as evidence of deployment
-      readiness — the visual and contact fidelity gaps that matter on hardware are exactly
-      what a simulator tends to miss.
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, simulation, benchmark]
-  - id: robocasa
-    name: "RoboCasa"
-    url: "https://github.com/robocasa/robocasa"
-    type: repo
-    what: "Large-scale simulation benchmark for everyday manipulation tasks in kitchen environments."
-    why: "Broad task coverage for pre-deployment sanity checks and for generating targeted recovery data."
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, simulation, benchmark]
-  - id: eval-statistical-bounds
-    name: "Statistical lower bounds on behavior-cloning success probability"
-    url: "https://arxiv.org/abs/2405.05439"
-    type: paper
-    what: "Derives statistically valid lower bounds on true success probability from a small number of trials (roughly 20-100)."
-    why: >
-      Turns "we got 7 out of 10" into a defensible statement. Most real-robot evaluations in this
-      field report point estimates from trial counts that cannot support the comparisons being
-      drawn, and this gives you the bound instead.
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, statistics, confidence, trials]
-  - id: phail-benchmark
-    name: "PhAIL: A Real-Robot VLA Benchmark and Distributional Methodology"
-    paper_title: "PhAIL: A Real-Robot VLA Benchmark and Distributional Methodology"
-    url: "https://arxiv.org/abs/2605.29710"
-    type: paper
-    what: >
-      A real-robot VLA benchmark that also proposes a distributional evaluation methodology. It
-      states outright that N <= 25 trials without confidence intervals cannot resolve close
-      comparisons.
-    why: >
-      Answers the question every evaluation actually faces: when am I allowed to stop running
-      trials. Pair it with the sequential and anytime-valid stopping work, which lets you stop
-      as soon as the answer is determined instead of pre-committing to a fixed trial count and
-      burning robot time on a difference that is already unambiguous.
-    notes: >
-      Our entry name previously read "Sequential / anytime-valid stopping rules for robot
-      evaluation", which is a description of one contribution rather than the paper's identity.
-      Renamed after scripts/check_papers.py compared it against the arXiv record — a small
-      instance of exactly the mislabelling that script exists to catch.
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, statistics, stopping, trials]
-  - id: eval-optimal-stopping
-    name: "Near-optimal stopping in the 10-50 trial regime"
-    url: "https://arxiv.org/abs/2503.10966"
-    type: paper
-    what: "Studies evaluation stopping specifically in the trial-count regime that real-robot manipulation work actually operates in."
-    why: >
-      The 10-50 trial regime is where almost all published robot evaluations live, and it is
-      precisely where naive statistics break down. This is the closest thing to a protocol for
-      the situation you are actually in.
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, statistics, small-sample, trials]
-  - id: libero-reproduction-gap
-    name: "A 25x gap between how LIBERO is evaluated in papers and its default config"
-    url: "https://arxiv.org/abs/2506.01844"
-    type: paper
-    what: >
-      Papers reporting LIBERO results commonly run 500 trials per suite across 3 seeds. LIBERO's
-      own default configuration ships `n_eval: 20`.
-    why: >
-      If you reproduce a published number with the default settings and get something worse, this
-      is a plausible reason before your training recipe is. It is also the clearest illustration
-      of why an evaluation protocol has to be reported rather than assumed: the same benchmark,
-      the same checkpoint, and a 25x difference in evidence.
-    maturity: research
-    verified: 2026-09
-    tags: [libero, evaluation, reproduction, protocol, trials]
-  - id: score-the-steps
-    name: "Score the Steps, Not Just the Goal — subgoal-level evaluation"
-    url: "https://arxiv.org/abs/2509.19524"
-    type: paper
-    what: "Uses a VLM to evaluate progress at the subgoal level, turning one bit of information per rollout into a progress curve."
-    why: >
-      The highest-leverage change to a real-robot evaluation protocol in this list. A success
-      rate from 30 trials is one number built from 30 bits, which is why it cannot resolve a
-      five-point difference. A per-subgoal progress curve gives you many more observations per
-      expensive trial — and it tells you *where* the policy fails, which is the thing you
-      actually need in order to fix it. If you change one thing about how you evaluate, change
-      this.
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, subgoal, progress, statistics, per-phase]
-  - id: failure-taxonomy-cluster
-    name: "Failure taxonomies for manipulation — five groups, five different label sets"
-    url: "https://arxiv.org/abs/2512.01946"
-    type: paper
-    what: >
-      There is no community-standard failure taxonomy, and this is the evidence: several
-      independent groups each invented their own.
-      [Guardian](https://arxiv.org/abs/2512.01946) detects robotic planning and execution errors
-      with VLMs and — importantly — separates the two, because planning errors and execution
-      errors have different remedies.
-      [Eval-Actions](https://arxiv.org/abs/2601.18723) scores fine-grained execution quality and,
-      unusually, examines rater reliability.
-      [ProTracer](https://arxiv.org/abs/2609.21369) diagnoses failures from proprioception alone,
-      needing no extra camera or VLM compute — which matters when the monitor shares a GPU with
-      the policy.
-      [Visual Symbols](https://arxiv.org/abs/2512.02787) produces a human-readable failure
-      representation that doubles as an annotation scheme.
-      [REBOOT](https://arxiv.org/abs/2609.22591) supplies the recovery-side dataset and
-      benchmark, on the hardest regime: precision assembly.
-    why: >
-      Use these as starting points rather than inventing your own labels from scratch — but do
-      not expect them to agree. The actionable part is Guardian's split: when a rollout fails,
-      "it chose the wrong thing to do" and "it did the right thing badly" call for completely
-      different fixes, and collapsing them into one failure count is how teams end up
-      collecting more data when the problem was the instruction.
-      This is also why this repo does not publish a single canonical taxonomy: the field does
-      not have one, and pretending otherwise would be exactly the kind of unearned confidence
-      the provenance policy exists to prevent.
-    maturity: research
-    verified: 2026-09
-    tags: [failure-taxonomy, evaluation, planning-vs-execution, diagnosis, gap]
-  - id: robotwin2
-    name: "RoboTwin 2.0"
-    url: "https://robotwin-platform.github.io/"
-    type: benchmark
-    what: "A bimanual manipulation benchmark with strong domain randomisation."
-    why: >
-      Fills the two weaknesses this repo keeps flagging in the popular sim benchmarks: LIBERO
-      and SimplerEnv are largely single-arm and comparatively light on visual randomisation, so
-      a policy can score well on them and still fail the first time the lighting changes. If
-      you want a sim screen that has a chance of predicting deployment, bimanual coverage and
-      randomisation strength are the two properties to select for.
-    maturity: research
-    verified: 2026-09
-    tags: [benchmark, simulation, bimanual, domain-randomisation, robustness]
-  - id: evaluation-resolution
-    name: "Same checkpoint, 10 trials said 90% and 50 trials said 76%"
-    url: "https://github.com/Physical-Intelligence/openpi"
-    type: discussion
-    what: >
-      A direct measurement of how much of a success rate is sample size. Evaluating the same
-      checkpoint with 10 episodes read 90%; a 50-episode check gave 76.0%. Set against the
-      measured noise floors elsewhere in this section (5-6% run-to-run, about 5% sampling noise
-      at 100 episodes), that gives a usable rule: **report N, and do not believe any difference
-      under about 10 points when N is below roughly 20-50.**
-    why: >
-      This is the most useful single number for reading robot-learning results, including your
-      own. Fourteen points of apparent improvement, from nothing but which checkpoint snapshot
-      you looked at and how many trials you ran. It is the concrete version of the statistical
-      papers in this section: they tell you the bounds, this tells you the size of the effect in
-      the regime everyone actually operates in.
-      Practical version: write down the trial count and the initial-state list before you start,
-      and when a colleague reports a five-point win, ask for N first.
-    maturity: research
-    verified: 2026-09
-    tags: [evaluation, sample-size, statistics, resolution, success-rate]
-  - id: libero-three-numbers
-    name: "Three different 'official' LIBERO evaluation protocols"
-    url: "https://arxiv.org/abs/2506.01844"
-    type: paper
-    what: >
-      The same benchmark, three conventions: papers reporting LIBERO results commonly run 500
-      trials per suite across 3 seeds; LIBERO's own default configuration ships `n_eval: 20`;
-      and the repository's initial-state set contains 50 states.
-    why: >
-      Before concluding that your reproduction failed, check which of the three you are using.
-      A 25x difference in evidence between two people who both say "we evaluated on LIBERO" is
-      the clearest possible argument for reporting the protocol rather than naming the benchmark.
-    maturity: research
-    verified: 2026-09
-    tags: [libero, evaluation, protocol, reproduction, trials]
+- id: vla-eval-harness
+  name: allenai/vla-evaluation-harness
+  url: https://github.com/allenai/vla-evaluation-harness
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - harness
+  what: Unified harness for evaluating VLA policies across environments.
+  what_zh: 在多种环境中评测 VLA 策略的统一框架。
+- id: simplerenv
+  name: SimplerEnv
+  url: https://github.com/simpler-env/SimplerEnv
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - simulation
+  - benchmark
+  what: Simulation environments for studying manipulation-policy transfer to real robots.
+  what_zh: 用于研究操作策略向真实机器人迁移的仿真环境。
+- id: robocasa
+  name: RoboCasa
+  url: https://github.com/robocasa/robocasa
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - simulation
+  - benchmark
+  what: Kitchen manipulation simulation tasks for evaluating general-purpose robot behavior.
+  what_zh: 用于评测通用机器人行为的厨房操作仿真任务。
+- id: eval-statistical-bounds
+  name: Statistical lower bounds on behavior-cloning success probability
+  url: https://arxiv.org/abs/2405.05439
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - statistics
+  - confidence
+  - trials
+  what: Statistical methods for lower bounds on behavior-cloning success probability from limited trials.
+  what_zh: 根据有限试验计算行为克隆成功概率下界的统计方法。
+- id: phail-benchmark
+  name: 'PhAIL: A Real-Robot VLA Benchmark and Distributional Methodology'
+  paper_title: 'PhAIL: A Real-Robot VLA Benchmark and Distributional Methodology'
+  url: https://arxiv.org/abs/2605.29710
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - statistics
+  - stopping
+  - trials
+  what: Real-robot VLA benchmark with distributional evaluation and uncertainty reporting.
+  what_zh: 真实机器人 VLA 基准，包含分布评测与不确定性报告方法。
+- id: eval-optimal-stopping
+  name: Near-optimal stopping in the 10-50 trial regime
+  url: https://arxiv.org/abs/2503.10966
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - statistics
+  - small-sample
+  - trials
+  what: Studies evaluation stopping rules when only a small number of robot trials is available.
+  what_zh: 研究机器人试验次数较少时的评测停止规则。
+- id: libero-reproduction-gap
+  name: LIBERO — evaluation-budget differences
+  url: https://arxiv.org/abs/2506.01844
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - libero
+  - evaluation
+  - reproduction
+  - protocol
+  - trials
+  what: Compares paper-level trial budgets with LIBERO configuration defaults; the same benchmark name
+    does not imply the same protocol.
+  what_zh: 比较论文中的试验数量与 LIBERO 默认配置；使用相同基准名称不代表评测协议相同。
+- id: score-the-steps
+  name: Score the Steps, Not Just the Goal — subgoal-level evaluation
+  url: https://arxiv.org/abs/2509.19524
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - subgoal
+  - progress
+  - statistics
+  - per-phase
+  what: Uses a VLM to assess subgoal progress rather than only the final task outcome.
+  what_zh: 利用 VLM 评估子目标进展，而不仅记录最终任务结果。
+- id: failure-taxonomy-cluster
+  name: Failure taxonomies for manipulation — five groups, five different label sets
+  url: https://arxiv.org/abs/2512.01946
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - failure-taxonomy
+  - evaluation
+  - planning-vs-execution
+  - diagnosis
+  - gap
+  what: Resources covering planning errors, execution quality, proprioceptive diagnosis, interpretable
+    failure labels and recovery benchmarks.
+  what_zh: 涵盖规划错误、执行质量、本体感觉诊断、可解释失败标签和恢复基准的资料。
+- id: robotwin2
+  name: RoboTwin 2.0
+  url: https://robotwin-platform.github.io/
+  type: benchmark
+  maturity: research
+  verified: 2026-09
+  tags:
+  - benchmark
+  - simulation
+  - bimanual
+  - domain-randomisation
+  - robustness
+  what: Bimanual manipulation benchmark with domain randomization.
+  what_zh: 包含域随机化的双臂操作基准。
+- id: evaluation-resolution
+  name: Evaluation sample-size example
+  url: https://github.com/Physical-Intelligence/openpi
+  type: discussion
+  maturity: research
+  verified: 2026-09
+  tags:
+  - evaluation
+  - sample-size
+  - statistics
+  - resolution
+  - success-rate
+  what: A reported checkpoint received different success estimates at 10 and 50 trials; report sample
+    size and uncertainty together.
+  what_zh: 同一检查点在 10 次和 50 次试验下得到不同成功率估计；应同时报告样本量与不确定性。
+- id: libero-three-numbers
+  name: Three different 'official' LIBERO evaluation protocols
+  url: https://arxiv.org/abs/2506.01844
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - libero
+  - evaluation
+  - protocol
+  - reproduction
+  - trials
+  what: Distinguishes LIBERO initial states, default evaluation count and paper-level repeated-trial protocols.
+  what_zh: 区分 LIBERO 初始状态集合、默认评测次数与论文中的多轮试验协议。

@@ -1,493 +1,498 @@
-section: "Deployment — inference timing, optimisation, edge, integration"
+section: Deployment and runtime
+section_zh: 部署与运行
 order: 40
-description: >
-  The reason this repo exists. Across 36 curated lists in this space,
-  `watchdog|e-stop|deadman|velocity limit` returns roughly zero hits, no list reports which
-  models actually export to ONNX/TensorRT/OpenVINO, and no list publishes measured
-  latency/VRAM/success-rate deltas. This section is the start of that.
+description: Connect policy inference to observation and robot control.
+description_zh: 连接策略推理、观测与机器人控制。
 entries:
-  - id: eapn-execution-aligned-replanning
-    name: "EAPN — execution-aligned asynchronous replanning"
-    paper_title: "Execution-Aligned Progressive Noise for Consistent Asynchronous Replanning in Generative Robot Policies"
-    url: "https://arxiv.org/abs/2610.06090"
-    type: paper
-    what: >
-      Carries a shared noise trajectory across replanning steps, aligns it with executed
-      displacement, and conditions new generation on committed actions to reduce
-      inconsistent continuation between action chunks.
-    why: >
-      A concrete research approach when an asynchronous queue removes pauses but the
-      generated chunks still switch modes; evaluate continuity under measured inference delays.
-    maturity: research
-    verified: 2026-10
-    tags: [async, chunking, continuity, latency]
-    notes: >
-      October 2026 preprint with simulation and real-robot experiments. Paper identity
-      checked via arXiv API on 2026-10-08; runnable implementation and hardware performance
-      were not independently verified here.
-  - id: rephrase-before-you-act
-    name: "Rephrase Before You Act — instruction normalization for a frozen VLA"
-    paper_title: "Rephrase Before You Act: Characterizing and Mitigating Language Sensitivity in Vision-Language-Action Models"
-    url: "https://arxiv.org/abs/2610.10526"
-    type: paper
-    what: >
-      Scores alternative instructions on training tasks, distills rephrasing rules,
-      and rewrites each incoming instruction once without changing the policy weights.
-    why: >
-      Adds an explicit instruction interface to deployment: test paraphrase sensitivity
-      before attributing a rollout regression to camera calibration or model quality.
-    maturity: research
-    verified: 2026-10
-    tags: [language, robustness, instructions, evaluation]
-    notes: >
-      Reported gains are specific to the tested policies and tasks. The official project
-      links code and rule artifacts, but end-to-end reproduction was not run here and a
-      reuse license was not verified. Check rewritten intent as well as task success.
-    sources:
-      - "https://sttawm.github.io/rephrase-before-you-act/"
-      - "https://github.com/sttawm/phrase-rl"
-  - id: ogam-runtime-monitor
-    name: "OGAM — object-grounded attention monitoring"
-    paper_title: "OGAM: Connecting Systematic Testing to Runtime Assurance through Object-Grounded Attention Monitoring for VLA Policies"
-    url: "https://arxiv.org/abs/2610.05878"
-    type: paper
-    what: >
-      Projects policy attention onto objects and compares its evolution with successful
-      reference episodes using dynamic time warping and a conformally calibrated stop threshold.
-    why: >
-      Offers a monitor design to study when policy attention is accessible; evaluate missed
-      failures, false stops, and time-to-stop alongside task success before integration.
-    maturity: research
-    verified: 2026-10
-    tags: [monitoring, attention, runtime, evaluation]
-    notes: >
-      Research evidence under the paper's test protocol, not a general safety guarantee.
-      Requires object masks, policy attention access, and successful calibration episodes;
-      public implementation and independent hardware reproduction were not verified here.
-  - id: lerobot-rtc-modes
-    name: "LeRobot — guided vs trained RTC and checkpoint delay limits"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/rtc.mdx"
-    type: docs
-    what: >
-      Main-branch RTC documentation distinguishes guided inference-time conditioning from
-      trained hard-prefix conditioning. Trained mode currently requires a Pi05 checkpoint
-      trained with `policy.rtc_training_max_delay > 0`.
-    why: >
-      Prevents treating trained RTC as a runtime switch for an arbitrary checkpoint.
-      Both `execution_horizon` and `inference.queue_threshold` must be at least the
-      checkpoint's maximum training delay; the horizon must also be no greater than
-      `chunk_size - rtc_training_max_delay`.
-    maturity: research
-    verified: 2026-10
-    license: Apache-2.0
-    tags: [rtc, chunking, checkpoint, latency, compatibility]
-    notes: >
-      Source inspected 2026-10-05. The main-branch guide includes trained mode while the
-      published en/rtc page inspected on the same date still describes guided RTC only.
-      Pin your LeRobot commit and use matching docs; no hardware validation was performed
-      for this entry. Async scheduling alone does not enforce continuity between chunks.
-  - id: lerobot-inference
-    name: "LeRobot — Policy Deployment (lerobot-rollout)"
-    url: "https://huggingface.co/docs/lerobot/en/inference"
-    type: docs
-    what: >
-      First-party deployment documentation: execution strategies (base/sentry/highlight/
-      DAgger/episodic), Sync vs Real-Time Chunking with `execution_horizon`,
-      `max_guidance_weight` and `prefix_attention_schedule`, cadence reporting, plus
-      `/subtask` and `/autosteer` endpoints for runtime sub-task re-planning.
-    why: >
-      Read this before designing your own inference loop — it already solves the common
-      cases. What it does not cover is the rest of deployment: a keyword scan of the
-      repo's inference and policy docs returns 0 hits for TensorRT, ONNX, quantization,
-      Jetson, and safety/e-stop/watchdog. That gap is what the sections below fill.
-    maturity: production
-    verified: 2026-09
-    license: Apache-2.0
-    tags: [docs, rtc, chunking, async, subtask]
-  - id: rtc
-    name: "Real-Time Execution of Action Chunking Flow Policies (RTC)"
-    url: "https://neurips.cc/virtual/2025/loc/san-diego/poster/117747"
-    type: paper
-    what: "Inference-time method for executing action chunks asynchronously, so the robot does not stall while the next chunk is being denoised."
-    why: >
-      The core reference for the single most common real-robot timing problem. If your
-      policy makes smooth predictions in open loop but stutters on hardware, the cause is
-      usually that inference latency exceeds the chunk's execution time and you are
-      re-planning from a stale observation.
-    maturity: research
-    verified: 2026-09
-    tags: [rtc, latency, chunking, async]
-  - id: vla-rail
-    name: "VLA-RAIL: A Real-Time Asynchronous Inference Linker for VLA Models and Robots"
-    url: "https://arxiv.org/abs/2512.24673"
-    type: paper
-    what: "An asynchronous inference linker that decouples VLA inference from the robot control loop."
-    why: "A concrete design for the inference/control decoupling problem, including how to keep the control loop fed while a chunk is in flight."
-    maturity: research
-    verified: 2026-09
-    tags: [async, latency, architecture]
-  - id: world-action-models-real-time
-    name: "World Action Models in Real Time: An Empirical Study of Smooth Execution via Asynchronous Deployment"
-    url: "https://arxiv.org/abs/2608.01880"
-    type: paper
-    what: "Empirical study of what actually makes asynchronous deployment produce smooth motion."
-    why: "An empirical rather than theoretical treatment — useful when you need to justify an architecture choice rather than a trick."
-    maturity: research
-    verified: 2026-09
-    tags: [async, empirical, smoothness]
-  - id: holobrain-0
-    name: "HoloBrain-0 Technical Report"
-    url: "https://arxiv.org/abs/2602.12062"
-    type: paper
-    what: "Technical report that includes an analysis of the timing defects of synchronous inference executing full action chunks sequentially."
-    why: "A clean statement of the failure mode: with synchronous inference you either block the control loop or act on stale observations, and both show up as degraded task success rather than as an obvious bug."
-    maturity: research
-    verified: 2026-09
-    tags: [sync, latency, analysis]
-  - id: vla-cpp
-    name: "vla.cpp: A Unified Inference Runtime for Vision-Language-Action Models"
-    url: "https://arxiv.org/abs/2606.08094"
-    type: paper
-    what: "A unified inference runtime targeting VLA models specifically."
-    why: "Relevant if you are considering writing your own serving layer — check whether this already covers your model family before doing so."
-    maturity: research
-    verified: 2026-09
-    tags: [runtime, serving]
-  - id: eva-client
-    name: "EVA-Client"
-    url: "https://github.com/Noietch/EVA-CLIENT"
-    type: repo
-    what: "Unified framework for deployment, evaluation and data collection on real robots — one policy, many robots."
-    why: "Directly targets the integration cost that dominates real projects. Its evaluation harness is as interesting as its deployment path, because most labs evaluate ad hoc."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, deployment, evaluation, data-collection]
-  - id: eva-client-paper
-    name: "EVA-Client (paper)"
-    url: "https://arxiv.org/abs/2607.02646"
-    type: paper
-    what: "Paper describing the EVA-Client deployment/evaluation/data-collection framework."
-    why: "Explains the design rationale behind the framework above."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, paper]
-  - id: robot-control-stack
-    name: "robot-control-stack"
-    url: "https://github.com/RobotControlStack/robot-control-stack"
-    type: repo
-    what: "ROS-free sim-to-real deployment stack for learned robot policies."
-    why: "A pragmatic option when ROS2 is more integration overhead than you need for a single-arm manipulation setup. Compare against a ROS2 path before committing either way."
-    maturity: research
-    verified: 2026-09
-    tags: [integration, sim2real, ros-free]
-  - id: minivla
-    name: "MiniVLA"
-    url: "https://github.com/Zhenxintao/MiniVLA"
-    type: repo
-    what: "Compact VLA targeting TensorRT edge deployment."
-    why: "One of the few projects that treats edge export as a first-class goal rather than an afterthought."
-    maturity: toy
-    verified: 2026-09
-    tags: [edge, tensorrt, small-model]
-  - id: embodirun
-    name: "EmbodiRun"
-    url: "https://github.com/BUAA-CI-LAB/EmbodiRun"
-    type: repo
-    what: "Execution runtime for embodied policies."
-    why: "Early-stage, but worth tracking as the runtime layer of this stack matures."
-    maturity: toy
-    verified: 2026-09
-    tags: [runtime]
-  - id: factory-floor-case-study
-    name: "A Factory-Floor Deployment Case Study of VLA Pipelines for Industrial Packaging"
-    url: "https://arxiv.org/abs/2605.27461"
-    type: paper
-    what: "Case study of deploying a VLA pipeline in an actual factory packaging task, written up as workflow, failures and lessons."
-    why: >
-      Rare and valuable: most deployment literature reports successes on lab benches.
-      A documented failure list from a production environment is worth more than ten
-      benchmark tables when you are planning your own rollout.
-    maturity: research
-    verified: 2026-09
-    tags: [deployment, case-study, industrial, failures]
-  - id: pi0-deploy-notes
-    name: "pi0 fine-tuning guide with domestic-arm deployment (Chinese)"
-    url: "https://zeeklog.com/p0de-wei-diao-ru-he-ji-yu-ge-chong-kai-yuan-shu-ju-ji-yi-ji-si-you-shu-ju-ji-wei-diao-openpi-han-wo-si-qi-yue-de-wei-diao-shi-jian-ji-openpizai-guo-chan-bi-shang-de-bu-shu-8"
-    type: blog
-    what: "Chinese write-up of fine-tuning openpi on open and private datasets, then deploying it on a domestic robot arm."
-    why: "Documents the adaptation steps for hardware outside the pretraining distribution — the case where most teams actually get stuck."
-    maturity: research
-    verified: 2026-09
-    tags: [chinese, pi0, deployment, blog]
-  - id: lerobot-rtc-docs
-    name: "LeRobot — Real-Time Chunking reference"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/rtc.mdx"
-    type: docs
-    what: >
-      The configuration surface for RTC: `execution_horizon`, `max_guidance_weight`,
-      `prefix_attention_schedule`, and `inference_delay`.
-    why: >
-      Read this to learn what the parameters mean — and note the documented limitation: the
-      docs state that `inference_delay` "should be calculated based on the inference latency of
-      the policy" and do not tell you how. Measuring that number is the single highest-value
-      hour you can spend before enabling RTC, and the how is in
-      docs/41-real-time-inference.md.
-    maturity: production
-    verified: 2026-09
-    tags: [rtc, chunking, config, inference-delay]
-  - id: lerobot-async
-    name: "LeRobot — asynchronous inference (policy server / robot client)"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/async.mdx"
-    type: docs
-    what: "Reference implementation of the decoupled architecture: a policy server that runs inference continuously and a robot client that consumes chunks as they arrive."
-    why: >
-      The cleanest existing template for the two-clock design in docs/41. Worth reading for the
-      queue-merge policy alone, because that is where the subtle bugs live — whether to drop or
-      blend a late chunk, and what the client does when the server goes quiet.
-    maturity: production
-    verified: 2026-09
-    tags: [async, architecture, queue, reference]
-  - id: lerobot-rollout
-    name: "LeRobot — rollout strategies and fleet operations"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx"
-    type: docs
-    what: >
-      A single CLI exposing `base`, `sentry`, `highlight`, `episodic` and `dagger` execution
-      strategies — autonomous runs, continuous fleet recording with Hub upload, a ring-buffer
-      "save the last 30 seconds" incident capture, and human takeover with pedal input.
-    why: >
-      The closest thing to a shipped operations control loop in a mainstream framework, and the
-      most under-appreciated document in this stack. Most teams build incident capture from
-      scratch, badly. If you adopt one thing from this repo, adopt the ring-buffer capture —
-      the episodes where the policy fails are exactly the data you need, and they are the ones
-      you will not think to record.
-    maturity: production
-    verified: 2026-09
-    tags: [operations, rollout, dagger, hil, incident-capture]
-  - id: lerobot-hil
-    name: "LeRobot — human-in-the-loop data collection"
-    url: "https://github.com/huggingface/lerobot/blob/main/docs/source/hil_data_collection.mdx"
-    type: docs
-    what: "Framework support for intervening during a rollout to collect correction data."
-    why: >
-      The practical route to the recovery data that long-horizon policies need. Correction data
-      from the policy's own failure states is the one thing that addresses covariate shift, and
-      having it built into the rollout loop is what makes it actually happen rather than being
-      planned and never collected.
-    maturity: production
-    verified: 2026-09
-    tags: [hil, corrections, dagger, recovery-data]
-  - id: ros2-control-trajectory
-    name: "ros2_control — joint_trajectory_controller"
-    url: "https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html"
-    type: docs
-    what: "Spline interpolation (cubic/quintic) between trajectory points, at a configurable rate, with velocity and acceleration limits."
-    why: >
-      This is where chunk interpolation actually lives, and it is the answer to a question most
-      VLA write-ups skip entirely: a policy emits 10-50 discrete setpoints, but the servos want a
-      continuous command. Push chunks here rather than commanding setpoints directly at the
-      policy's rate. Choose the spline order deliberately — and note that interpolation also
-      *hides* policy error, which is a feature until you are debugging.
-    maturity: production
-    verified: 2026-09
-    tags: [ros2, interpolation, trajectory, limits]
-  - id: ros2-control-admittance
-    name: "ros2_control — admittance_controller"
-    url: "https://control.ros.org/rolling/doc/ros2_controllers/admittance_controller/doc/userdoc.html"
-    type: docs
-    what: "Force/compliance control that lets an external force deviate from the commanded trajectory."
-    why: >
-      The controller-layer answer to contact-rich tasks that a position-controlled learned policy
-      cannot handle on its own. A policy trained on position trajectories will fight the
-      environment; an admittance layer absorbs that. Worth knowing it exists before you conclude
-      your policy needs to learn compliance.
-    maturity: production
-    verified: 2026-09
-    tags: [ros2, compliance, contact, force]
-  - id: ros2-control-gripper
-    name: "ros2_control — parallel_gripper_controller"
-    url: "https://control.ros.org/jazzy/doc/ros2_controllers/parallel_gripper_controller/doc/userdoc.html"
-    type: docs
-    what: "Standard gripper command interface for parallel grippers."
-    why: >
-      Relevant to the gripper action-representation problem: normalised 0-1 versus metres versus
-      effort is decided per project with no consensus, which is why gripper conventions are a
-      recurring source of porting bugs. This gives you the controller-side interface to map onto.
-    maturity: production
-    verified: 2026-09
-    tags: [ros2, gripper, interface]
-  - id: neural-controller
-    name: "G-Levine/neural_controller"
-    url: "https://github.com/G-Levine/neural_controller"
-    type: repo
-    what: "Runs a learned policy as a ros2_control controller, alongside other controllers in the same controller manager."
-    why: >
-      One of only two good open-source bridges between a learned policy and a real-time control
-      framework. The architectural advantage is real: the policy becomes a peer of the
-      trajectory controller rather than an external process racing it, which removes a whole
-      class of timing bugs.
-    maturity: research
-    verified: 2026-09
-    tags: [ros2, integration, real-time, bridge]
-  - id: xbotics-ch13
-    name: "Xbotics 具身智能教程 第13讲 — real-time VLA inference (Chinese)"
-    url: "https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/13-VLA%E5%89%8D%E6%B2%BF.md"
-    type: blog
-    what: >
-      A long-form Chinese lecture treating real-time inference as "the first deployment
-      blocker". It defines the three latencies separately — time to first action, end-to-end
-      perception-to-action latency, and chunk-boundary stall — then walks the RTC derivation
-      with worked numbers from the paper: pi0.5 at 50 Hz with 5 denoising steps needs 76 ms per
-      inference against a 20 ms control period, the prediction/execution/frozen regions and how
-      they are sized, the ~28% inference cost of guidance (97 ms versus 76 ms), a rejection-
-      sampling alternative measured at 223 ms, and the +100 ms / +200 ms latency-robustness
-      results including temporal ensembling tripping a protective stop. It closes on the
-      limitation RTC does not address: TTFA, the reaction latency of the frozen window.
-    why: >
-      The most complete published decomposition of the VLA latency problem found in any
-      language, and it is the reason the gap in this repo is narrower than we first claimed:
-      the *framework* for decomposing the budget does exist, in Chinese, and it is good. What
-      is still missing is filled-in, per-stage, measured numbers on a specific stack — which
-      is what docs/40-optimization-matrix.md asks contributors to produce. Read this before
-      reading the RTC paper; the derivation is clearer than the paper's.
-    maturity: research
-    verified: 2026-09
-    tags: [chinese, latency, rtc, ttfa, derivation, deployment]
-    notes: >
-      The chapter also argues the field needs three complementary layers rather than one fix —
-      algorithms that change how chunks are generated and joined (RTC, FASTER, Legato), systems
-      work that reduces single-inference cost, and learned/speculative methods that push average
-      latency down once inference is already fast.
-      The wider course is organised around the claim that embodied AI's difficulty is the whole
-      system chain — perception, control, data, training, deployment, and failure feedback —
-      and it applies a five-category failure framework per lecture with post-mortems: vision,
-      action, timing, target pose, and data coverage. That is a **different axis from this
-      repo's troubleshooting section**, which is organised by symptom. Ours answers "what do I
-      see, and what is it"; theirs answers "which part of the system is implicated". Worth
-      reading both, and worth knowing that a category that never appears in your own
-      post-mortems is usually one you have not instrumented yet.
-  - id: faster
-    name: "FASTER: Rethinking Real-Time Flow VLAs"
-    url: "https://arxiv.org/abs/2603.19199"
-    type: paper
-    what: "Reconsiders the denoising schedule of flow-matching VLAs specifically to reduce reaction latency."
-    why: >
-      Directly attacks the limit RTC leaves in place. Under a fixed denoising schedule, the
-      action expert's N steps dominate latency and the reaction time is roughly
-      `L + (s/2)·T_c` regardless of how smoothly chunks are joined. If your task is dynamic
-      rather than merely long, this is the relevant axis, not chunk-boundary smoothness.
-    maturity: research
-    verified: 2026-09
-    tags: [ttfa, latency, flow-matching, denoising-schedule]
-  - id: legato
-    name: "Legato: Learning Native Continuation for Action Chunking Flow Policies"
-    url: "https://arxiv.org/abs/2602.12978"
-    type: paper
-    what: "Learns the continuation of an action chunk natively, so a chunk can be extended instead of requiring a full re-inference."
-    why: >
-      A learned route to the same goal as RTC's inference-time guidance: reduce how often you pay
-      full inference cost, rather than patching the seams after the fact. Note the tradeoff
-      against RTC — guidance is training-free and costs ~28% extra inference, while a learned
-      continuation requires a training run but changes the cost structure itself.
-    maturity: research
-    verified: 2026-09
-    tags: [chunking, continuation, training, latency]
-  - id: delay-aware-diffusion
-    name: "Delay-Aware Diffusion Policy"
-    url: "https://arxiv.org/abs/2512.07697"
-    type: paper
-    what: "Trains a policy across a range of delays from zero up to the measured deployment delay, so the policy itself accounts for staleness."
-    why: >
-      Attacks the staleness term in the latency budget at training time instead of masking it
-      at the chunk seam. This is the counterpart to RTC: RTC makes the joint between chunks
-      smooth while leaving the frozen window locked, whereas a delay-aware policy has seen
-      delayed observations during training and can act sensibly on them. If your measured `d`
-      is large and your task is dynamic, this is the more principled direction.
-    maturity: research
-    verified: 2026-09
-    tags: [delay, staleness, training, latency, diffusion]
-  - id: speculative-policy-orchestration
-    name: "Speculative Policy Orchestration: A Latency-Resilient Framework for Cloud-Robotic Manipulation"
-    url: "https://arxiv.org/abs/2603.19418"
-    type: paper
-    what: "A latency-resilient orchestration framework for cloud-hosted manipulation policies, naming the failure mode directly: network latency and jitter can destabilise the system, causing command starvation and unsafe physical execution."
-    why: >
-      The clearest statement that over-the-network inference is a safety problem rather than a
-      performance problem. Read it before deciding to put the policy on a server, and use its
-      framing — command starvation — when you argue for a local fallback path.
-    maturity: research
-    verified: 2026-09
-    tags: [network, cloud, command-starvation, safety, orchestration]
-  - id: roboecc
-    name: "RoboECC: Multi-Factor-Aware Edge-Cloud Collaborative Deployment for VLA Models"
-    url: "https://arxiv.org/abs/2603.20711"
-    type: paper
-    what: "Decides which parts of a VLA model run on the edge and which in the cloud, trading compute pressure against real-time requirements."
-    why: >
-      Relevant when a single onboard device cannot host the whole model. The interesting part
-      for deployment is the split point, because it determines what your robot can still do
-      when the link degrades.
-    maturity: research
-    verified: 2026-09
-    tags: [edge-cloud, split-inference, offload]
-  - id: comvla
-    name: "ComVLA: Communication-Aware Split Inference for VLA Models in 6G-Connected Robotics"
-    url: "https://arxiv.org/abs/2609.07838"
-    type: paper
-    what: "Split inference that accounts for the communication link, targeting bandwidth-constrained connected robotics."
-    why: "The bandwidth-constrained half of the offload problem; complements RoboECC's compute-side view."
-    maturity: research
-    verified: 2026-09
-    tags: [split-inference, network, bandwidth, offload]
-  - id: viam-calibration-worksheet
-    name: "Frame calibration worksheet"
-    url: "https://github.com/viam-devrel/pick-and-place/blob/main/setup/frame-calibration-worksheet.md"
-    type: docs
-    what: "An actual fill-in-the-blanks worksheet for robot frame calibration, rather than API documentation."
-    why: >
-      Rare and directly reusable: most calibration material is library documentation, which
-      tells you how to call the function but not what a complete calibration record looks
-      like. This is a checklist artifact, and it is the kind of thing that prevents the
-      "checkpoint validated against which calibration" problem. Adapt it into
-      checklists/calibrate-a-new-robot.md rather than copying it wholesale.
-    maturity: production
-    verified: 2026-09
-    tags: [calibration, checklist, worksheet, procedure]
-  - id: ros2-control-mock
-    name: "ros2_control — mock components"
-    url: "https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/mock_components_userdoc.html"
-    type: docs
-    what: "Official mock hardware components that let you exercise controllers without a robot."
-    why: >
-      The closest official tooling to hardware-in-the-loop testing for a policy, with an
-      honest caveat: it tests controller plumbing, not the policy. Still worth using to
-      validate your command path, limits and watchdog wiring before touching hardware — that
-      is where the cheap bugs are.
-    maturity: production
-    verified: 2026-09
-    tags: [ros2, testing, hil, mock]
-  - id: ros2-tracing
-    name: "ros2_tracing"
-    url: "https://github.com/ros2/ros2_tracing"
-    type: repo
-    what: "Low-overhead tracing instrumentation for ROS 2, built on LTTng."
-    why: >
-      The measurement tool for the latency budget this repo keeps asking you to fill in.
-      Instrumenting a real control loop without perturbing it is genuinely hard; this is the
-      maintained way to do it in ROS 2.
-    maturity: production
-    verified: 2026-09
-    tags: [ros2, tracing, profiling, latency, measurement]
-  - id: tensorrt-dev-guide
-    name: "NVIDIA TensorRT Developer Guide"
-    url: "https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html"
-    type: docs
-    what: "Vendor reference for TensorRT: supported operators, precision modes, dynamic shapes and plugins."
-    why: >
-      The constraint reference to consult *before* promising an export path. Most failed VLA
-      exports fail on a specific unsupported operator or a dynamic-shape construct, and this
-      is where you find out whether yours is supported rather than discovering it after
-      writing the export script.
-    maturity: production
-    verified: 2026-09
-    tags: [tensorrt, export, operators, reference]
+- id: eapn-execution-aligned-replanning
+  name: EAPN — execution-aligned asynchronous replanning
+  paper_title: Execution-Aligned Progressive Noise for Consistent Asynchronous Replanning in Generative
+    Robot Policies
+  url: https://arxiv.org/abs/2610.06090
+  type: paper
+  maturity: research
+  verified: 2026-10
+  tags:
+  - async
+  - chunking
+  - continuity
+  - latency
+  what: Aligns correlated noise and committed actions across replanning steps to improve action-chunk
+    continuation.
+  what_zh: 在重规划之间对齐相关噪声与已承诺动作，改善动作块的连续性。
+  notes: Preprint; the implementation and hardware results have not been reproduced in this repository.
+  notes_zh: 预印本；本仓库未复现其实现与硬件结果。
+- id: rephrase-before-you-act
+  name: Rephrase Before You Act — instruction normalization for a frozen VLA
+  paper_title: 'Rephrase Before You Act: Characterizing and Mitigating Language Sensitivity in Vision-Language-Action
+    Models'
+  url: https://arxiv.org/abs/2610.10526
+  type: paper
+  maturity: research
+  verified: 2026-10
+  tags:
+  - language
+  - robustness
+  - instructions
+  - evaluation
+  sources:
+  - https://sttawm.github.io/rephrase-before-you-act/
+  - https://github.com/sttawm/phrase-rl
+  what: Distills instruction-rephrasing rules from training-task evaluations and rewrites input instructions
+    for a frozen policy.
+  what_zh: 根据训练任务评测归纳指令改写规则，再为冻结的策略改写输入指令。
+  notes: Evaluate whether rewriting preserves user intent. Linked code artifacts were inspected, but reuse
+    licensing and end-to-end reproduction remain unverified.
+  notes_zh: 需评测改写是否保留用户意图。已查看所链接代码资料，但复用许可与端到端复现仍未验证。
+- id: ogam-runtime-monitor
+  name: OGAM — object-grounded attention monitoring
+  paper_title: 'OGAM: Connecting Systematic Testing to Runtime Assurance through Object-Grounded Attention
+    Monitoring for VLA Policies'
+  url: https://arxiv.org/abs/2610.05878
+  type: paper
+  maturity: research
+  verified: 2026-10
+  tags:
+  - monitoring
+  - attention
+  - runtime
+  - evaluation
+  what: Compares object-grounded attention against successful reference episodes to trigger early stopping;
+    requires attention access and calibration data.
+  what_zh: 将对象级注意力与成功参考轨迹比较以触发提前停止；需要访问注意力及校准数据。
+  notes: Needs object masks and successful reference/calibration episodes. Reported stopping performance
+    is protocol-specific, not a general safety guarantee.
+  notes_zh: 需要对象掩码和成功参考、校准轨迹。停止性能只对应论文实验协议，不是通用安全保证。
+- id: lerobot-rtc-modes
+  name: LeRobot — guided vs trained RTC and checkpoint delay limits
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/rtc.mdx
+  type: docs
+  maturity: research
+  verified: 2026-10
+  license: Apache-2.0
+  tags:
+  - rtc
+  - chunking
+  - checkpoint
+  - latency
+  - compatibility
+  what: Documents guided RTC and trained prefix conditioning. Trained mode requires a compatible checkpoint
+    trained with a positive maximum delay.
+  what_zh: 说明 guided RTC 与训练式前缀条件输入；trained 模式要求兼容且训练最大延迟为正的检查点。
+  notes: For trained mode, execution_horizon and inference.queue_threshold must cover the checkpoint maximum
+    training delay; the execution horizon must not exceed chunk_size minus that delay. Pin code and documentation
+    together.
+  notes_zh: trained 模式下，execution_horizon 与 inference.queue_threshold 必须覆盖检查点的最大训练延迟；执行步数不得超过 chunk_size
+    减去该延迟。代码与文档需固定为匹配版本。
+- id: lerobot-inference
+  name: LeRobot — Policy Deployment (lerobot-rollout)
+  url: https://huggingface.co/docs/lerobot/en/inference
+  type: docs
+  maturity: production
+  verified: 2026-09
+  license: Apache-2.0
+  tags:
+  - docs
+  - rtc
+  - chunking
+  - async
+  - subtask
+  what: Official deployment guide for rollout strategies, execution horizons and runtime subtask interfaces.
+  what_zh: 官方部署指南，介绍执行策略、执行步数与运行时子任务接口。
+- id: rtc
+  name: Real-Time Execution of Action Chunking Flow Policies (RTC)
+  url: https://neurips.cc/virtual/2025/loc/san-diego/poster/117747
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - rtc
+  - latency
+  - chunking
+  - async
+  what: Conditions asynchronously generated action chunks on committed actions to improve continuity during
+    execution.
+  what_zh: 生成异步动作块时以已承诺的动作为条件，改善执行连续性。
+- id: vla-rail
+  name: 'VLA-RAIL: A Real-Time Asynchronous Inference Linker for VLA Models and Robots'
+  url: https://arxiv.org/abs/2512.24673
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - async
+  - latency
+  - architecture
+  what: Decouples model inference from the robot control loop through an asynchronous linker.
+  what_zh: 通过异步连接层将模型推理与机器人控制循环解耦。
+- id: world-action-models-real-time
+  name: 'World Action Models in Real Time: An Empirical Study of Smooth Execution via Asynchronous Deployment'
+  url: https://arxiv.org/abs/2608.01880
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - async
+  - empirical
+  - smoothness
+  what: Empirical study of smooth motion under asynchronous deployment of world-action models.
+  what_zh: 研究世界动作模型在异步部署下的动作平滑性。
+- id: holobrain-0
+  name: HoloBrain-0 Technical Report
+  url: https://arxiv.org/abs/2602.12062
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - sync
+  - latency
+  - analysis
+  what: Technical report including timing limitations of synchronous full-chunk execution.
+  what_zh: 技术报告，包含同步执行完整动作块时的时序限制分析。
+- id: vla-cpp
+  name: 'vla.cpp: A Unified Inference Runtime for Vision-Language-Action Models'
+  url: https://arxiv.org/abs/2606.08094
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - runtime
+  - serving
+  what: Inference runtime designed for vision-language-action models.
+  what_zh: 为视觉语言动作模型设计的推理运行时。
+- id: eva-client
+  name: EVA-Client
+  url: https://github.com/Noietch/EVA-CLIENT
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - deployment
+  - evaluation
+  - data-collection
+  what: Framework for deployment, evaluation and data collection across robot platforms.
+  what_zh: 跨机器人平台的部署、评测与数据采集框架。
+- id: eva-client-paper
+  name: EVA-Client (paper)
+  url: https://arxiv.org/abs/2607.02646
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - paper
+  what: Paper describing the EVA-Client robot deployment and evaluation framework.
+  what_zh: 介绍 EVA-Client 机器人部署与评测框架的论文。
+- id: robot-control-stack
+  name: robot-control-stack
+  url: https://github.com/RobotControlStack/robot-control-stack
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - integration
+  - sim2real
+  - ros-free
+  what: ROS-independent stack for deploying learned policies from simulation to robots.
+  what_zh: 不依赖 ROS 的学习策略部署栈，连接仿真与真实机器人。
+- id: minivla
+  name: MiniVLA
+  url: https://github.com/Zhenxintao/MiniVLA
+  type: repo
+  maturity: toy
+  verified: 2026-09
+  tags:
+  - edge
+  - tensorrt
+  - small-model
+  what: Compact VLA implementation targeting TensorRT edge inference.
+  what_zh: 面向 TensorRT 边缘推理的紧凑型 VLA 实现。
+- id: embodirun
+  name: EmbodiRun
+  url: https://github.com/BUAA-CI-LAB/EmbodiRun
+  type: repo
+  maturity: toy
+  verified: 2026-09
+  tags:
+  - runtime
+  what: Execution runtime for embodied policies.
+  what_zh: 具身策略的执行运行时。
+- id: factory-floor-case-study
+  name: A Factory-Floor Deployment Case Study of VLA Pipelines for Industrial Packaging
+  url: https://arxiv.org/abs/2605.27461
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - deployment
+  - case-study
+  - industrial
+  - failures
+  what: Industrial packaging deployment case study describing VLA workflows and observed failures.
+  what_zh: 工业包装场景的 VLA 部署案例，记录工作流程与实际失败情况。
+- id: pi0-deploy-notes
+  name: pi0 fine-tuning guide with domestic-arm deployment (Chinese)
+  url: https://zeeklog.com/p0de-wei-diao-ru-he-ji-yu-ge-chong-kai-yuan-shu-ju-ji-yi-ji-si-you-shu-ju-ji-wei-diao-openpi-han-wo-si-qi-yue-de-wei-diao-shi-jian-ji-openpizai-guo-chan-bi-shang-de-bu-shu-8
+  type: blog
+  maturity: research
+  verified: 2026-09
+  tags:
+  - chinese
+  - pi0
+  - deployment
+  - blog
+  what: Chinese walkthrough of openpi fine-tuning and deployment on a robot arm.
+  what_zh: 关于 openpi 微调与机械臂部署的中文教程。
+- id: lerobot-rtc-docs
+  name: LeRobot — Real-Time Chunking reference
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/rtc.mdx
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - rtc
+  - chunking
+  - config
+  - inference-delay
+  what: Reference for RTC execution horizon, guidance weight, prefix attention and inference delay.
+  what_zh: RTC 执行步数、引导权重、前缀注意力与推理延迟的配置参考。
+- id: lerobot-async
+  name: LeRobot — asynchronous inference (policy server / robot client)
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/async.mdx
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - async
+  - architecture
+  - queue
+  - reference
+  what: Policy-server and robot-client implementation for asynchronous inference and action delivery.
+  what_zh: 通过策略服务器与机器人客户端实现异步推理和动作传输。
+- id: lerobot-rollout
+  name: LeRobot — rollout strategies and fleet operations
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - operations
+  - rollout
+  - dagger
+  - hil
+  - incident-capture
+  what: Rollout modes supporting autonomous operation, recording, incident capture and human intervention.
+  what_zh: 支持自主执行、记录、事件片段保存及人工介入的 rollout 模式。
+- id: lerobot-hil
+  name: LeRobot — human-in-the-loop data collection
+  url: https://github.com/huggingface/lerobot/blob/main/docs/source/hil_data_collection.mdx
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - hil
+  - corrections
+  - dagger
+  - recovery-data
+  what: Collects human corrections during policy execution.
+  what_zh: 在策略执行过程中采集人工纠正数据。
+- id: ros2-control-trajectory
+  name: ros2_control — joint_trajectory_controller
+  url: https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - ros2
+  - interpolation
+  - trajectory
+  - limits
+  what: Interpolates joint trajectories; limit enforcement depends on the complete controller and hardware
+    configuration.
+  what_zh: 插值执行关节轨迹；限位是否生效取决于完整的控制器与硬件配置。
+- id: ros2-control-admittance
+  name: ros2_control — admittance_controller
+  url: https://control.ros.org/rolling/doc/ros2_controllers/admittance_controller/doc/userdoc.html
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - ros2
+  - compliance
+  - contact
+  - force
+  what: Admittance controller that adjusts commanded motion in response to measured forces.
+  what_zh: 根据测得的外力调整指令运动的导纳控制器。
+- id: ros2-control-gripper
+  name: ros2_control — parallel_gripper_controller
+  url: https://control.ros.org/jazzy/doc/ros2_controllers/parallel_gripper_controller/doc/userdoc.html
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - ros2
+  - gripper
+  - interface
+  what: Standard command interface for parallel grippers.
+  what_zh: 平行夹爪的标准控制接口。
+- id: neural-controller
+  name: G-Levine/neural_controller
+  url: https://github.com/G-Levine/neural_controller
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - ros2
+  - integration
+  - real-time
+  - bridge
+  what: Integrates a learned policy into a ros2_control controller manager.
+  what_zh: 将学习策略接入 ros2_control 控制器管理器。
+- id: xbotics-ch13
+  name: Xbotics 具身智能教程 第13讲 — real-time VLA inference (Chinese)
+  url: https://github.com/Xbotics-Embodied-AI-club/Xbotics-Embodied-AI-Handbook/blob/main/docs/part3-end-to-end/13-VLA%E5%89%8D%E6%B2%BF.md
+  type: blog
+  maturity: research
+  verified: 2026-09
+  tags:
+  - chinese
+  - latency
+  - rtc
+  - ttfa
+  - derivation
+  - deployment
+  what: Chinese lesson on first-action latency, chunk stalls and real-time chunking, with worked examples.
+  what_zh: 介绍首动作延迟、动作块停顿和实时分块的中文课程，包含计算示例。
+- id: faster
+  name: 'FASTER: Rethinking Real-Time Flow VLAs'
+  url: https://arxiv.org/abs/2603.19199
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - ttfa
+  - latency
+  - flow-matching
+  - denoising-schedule
+  what: Studies denoising schedules for reducing flow-policy reaction latency.
+  what_zh: 研究降低流模型策略反应延迟的去噪调度。
+- id: legato
+  name: 'Legato: Learning Native Continuation for Action Chunking Flow Policies'
+  url: https://arxiv.org/abs/2602.12978
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - chunking
+  - continuation
+  - training
+  - latency
+  what: Learns native continuation of action chunks instead of regenerating an entire plan each time.
+  what_zh: 学习动作块的原生延续，减少每次都重新生成完整计划的需要。
+- id: delay-aware-diffusion
+  name: Delay-Aware Diffusion Policy
+  url: https://arxiv.org/abs/2512.07697
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - delay
+  - staleness
+  - training
+  - latency
+  - diffusion
+  what: Trains diffusion policies under a range of delays to account for stale observations.
+  what_zh: 在多种延迟下训练扩散策略，使其考虑观测陈旧问题。
+- id: speculative-policy-orchestration
+  name: 'Speculative Policy Orchestration: A Latency-Resilient Framework for Cloud-Robotic Manipulation'
+  url: https://arxiv.org/abs/2603.19418
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - network
+  - cloud
+  - command-starvation
+  - safety
+  - orchestration
+  what: Cloud-robot policy orchestration addressing network delay, jitter and command starvation.
+  what_zh: 处理网络延迟、抖动与动作队列耗尽的云端机器人策略编排。
+- id: roboecc
+  name: 'RoboECC: Multi-Factor-Aware Edge-Cloud Collaborative Deployment for VLA Models'
+  url: https://arxiv.org/abs/2603.20711
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - edge-cloud
+  - split-inference
+  - offload
+  what: Studies how to divide VLA computation between edge devices and the cloud.
+  what_zh: 研究如何在边缘设备和云端之间分配 VLA 计算。
+- id: comvla
+  name: 'ComVLA: Communication-Aware Split Inference for VLA Models in 6G-Connected Robotics'
+  url: https://arxiv.org/abs/2609.07838
+  type: paper
+  maturity: research
+  verified: 2026-09
+  tags:
+  - split-inference
+  - network
+  - bandwidth
+  - offload
+  what: Communication-aware split inference for bandwidth-constrained robot systems.
+  what_zh: 针对带宽受限机器人系统的通信感知分割推理。
+- id: viam-calibration-worksheet
+  name: Frame calibration worksheet
+  url: https://github.com/viam-devrel/pick-and-place/blob/main/setup/frame-calibration-worksheet.md
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - calibration
+  - checklist
+  - worksheet
+  - procedure
+  what: Worksheet for recording robot coordinate-frame calibration.
+  what_zh: 用于记录机器人坐标系标定的工作表。
+- id: ros2-control-mock
+  name: ros2_control — mock components
+  url: https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/mock_components_userdoc.html
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - ros2
+  - testing
+  - hil
+  - mock
+  what: Mock hardware components for exercising controllers without a physical robot.
+  what_zh: 在没有实体机器人时测试控制器的模拟硬件组件。
+- id: ros2-tracing
+  name: ros2_tracing
+  url: https://github.com/ros2/ros2_tracing
+  type: repo
+  maturity: production
+  verified: 2026-09
+  tags:
+  - ros2
+  - tracing
+  - profiling
+  - latency
+  - measurement
+  what: ROS 2 tracing tools built on LTTng for measuring execution and communication events.
+  what_zh: 基于 LTTng 的 ROS 2 跟踪工具，用于测量执行和通信事件。
+- id: tensorrt-dev-guide
+  name: NVIDIA TensorRT Developer Guide
+  url: https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html
+  type: docs
+  maturity: production
+  verified: 2026-09
+  tags:
+  - tensorrt
+  - export
+  - operators
+  - reference
+  what: TensorRT reference for operators, precision, dynamic shapes and plugins.
+  what_zh: TensorRT 算子、精度、动态形状与插件的参考文档。

@@ -1,149 +1,189 @@
-section: "Training — frameworks, recipes, action representations"
-order: 30
-description: >
-  Where the second-largest gap is. There are good paper lists for VLA training, but almost
-  nothing compares LoRA vs full fine-tuning vs frozen-backbone on cost, VRAM and success
-  rate, and nothing publishes reproducible per-model hyperparameters. Entries marked
-  `research` here are frameworks; the recipes you will have to read the source for.
+section: Models and training frameworks
+section_zh: 模型与训练框架
+order: 20
+description: Implementations for policy training and inference.
+description_zh: 用于策略训练与推理的实现。
 entries:
-  - id: openpi
-    name: "openpi (Physical Intelligence)"
-    url: "https://github.com/Physical-Intelligence/openpi"
-    type: repo
-    what: "Official open-source implementation of pi0, pi0-FAST and pi0.5, with fine-tuning configs, a training loop, and an inference runtime for real robots."
-    why: "The reference codebase if you are fine-tuning pi0.5. Its config files are the de-facto specification for normalisation statistics, action horizons and the discrete-state input convention — most 'the policy ignores the state' bugs trace back to a mismatch here."
-    maturity: production
-    verified: 2026-09
-    license: Apache-2.0
-    tags: [framework, pi0, pi05, fine-tuning]
-  - id: lerobot
-    name: "LeRobot (Hugging Face)"
-    url: "https://github.com/huggingface/lerobot"
-    type: repo
-    what: "End-to-end stack: hardware, dataset format, teleoperation, training and rollout for ACT, Diffusion Policy, VQ-BeT, SmolVLA, pi0 and pi0.5."
-    why: "The lowest-friction path from a real robot to a trained policy, and the dataset format the rest of the ecosystem has converged on."
-    maturity: production
-    verified: 2026-09
-    license: Apache-2.0
-    tags: [framework, training, dataset-format]
-  - id: isaac-gr00t
-    name: "NVIDIA Isaac-GR00T"
-    url: "https://github.com/NVIDIA/Isaac-GR00T"
-    type: repo
-    what: "GR00T N1 / N1.5 vision-language-action foundation models with fine-tuning and evaluation tooling."
-    why: "The main alternative foundation-model family to pi0. Check VRAM requirements before committing — they are widely reported as the deciding constraint."
-    maturity: production
-    verified: 2026-09
-    tags: [framework, foundation-model, nvidia]
-  - id: openvla
-    name: "OpenVLA"
-    url: "https://github.com/openvla/openvla"
-    type: repo
-    what: "Open 7B vision-language-action model built on a Llama-2 backbone with discrete action tokens."
-    why: "Historically important and widely benchmarked. Its autoregressive discrete-action design has very different latency characteristics from flow-matching policies — relevant if your control rate is tight."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, discrete-actions, openvla]
-  - id: openvla-oft
-    name: "OpenVLA-OFT"
-    url: "https://github.com/moojink/openvla-oft"
-    type: repo
-    what: "Optimised fine-tuning recipe for OpenVLA: parallel decoding, action chunking, continuous actions."
-    why: "Reports large throughput gains over vanilla OpenVLA fine-tuning. A useful worked example of how much the action head design, rather than the backbone, dominates inference cost."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, fine-tuning, action-chunking]
-  - id: rdt-1b
-    name: "RDT-1B (RoboticsDiffusionTransformer)"
-    url: "https://github.com/thu-ml/RoboticsDiffusionTransformer"
-    type: repo
-    what: "1.2B diffusion-transformer foundation model for bimanual manipulation with a physically-interpretable unified action space."
-    why: "The main open bimanual foundation model outside the pi0/GR00T families. Its unified action space is worth studying if you are targeting cross-embodiment transfer."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, bimanual, diffusion]
-    notes: "The obvious URL `thu-ml/RDT` is a 404. Use this one."
-  - id: octo
-    name: "Octo"
-    url: "https://github.com/octo-models/octo"
-    type: repo
-    what: "Transformer policy trained on Open X-Embodiment, with flexible observation and action spaces."
-    why: "Smaller and cheaper to fine-tune than the 3B+ models. A reasonable choice when you have modest data and a modest GPU."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, small-model]
-  - id: fluxvla
-    name: "FluxVLA"
-    url: "https://github.com/FluxVLA/FluxVLA"
-    type: repo
-    what: "All-in-one VLA engineering platform spanning data handling through deployment."
-    why: "An alternative to assembling openpi + LeRobot + your own glue. Read the docs before writing that glue — you may not need to."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, platform]
-  - id: rlinf
-    name: "RLinf"
-    url: "https://github.com/RLinf/RLinf"
-    type: repo
-    what: "Reinforcement learning infrastructure for embodied models, including a documented Franka real-world pi0 SFT and deployment example."
-    why: "One of very few public, end-to-end worked examples that goes from fine-tuning to a specific real arm. Worth reading even if you do not use the framework."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, rl, pi0, worked-example]
-  - id: vla-foundry
-    name: "TRI-ML/vla_foundry"
-    url: "https://github.com/TRI-ML/vla_foundry"
-    type: repo
-    what: "Toyota Research Institute's toolkit for training and evaluating VLA models."
-    why: "A second independent implementation to compare against when you suspect a bug in your own training loop."
-    maturity: research
-    verified: 2026-09
-    tags: [framework, training]
-  - id: openpi-tool
-    name: "Isaiah-WU/Openpi_tool — pi05 fine-tuning and real-robot deployment"
-    url: "https://github.com/Isaiah-WU/Openpi_tool"
-    type: repo
-    what: "Chinese walk-through of pi0.5 fine-tuning and deployment on real hardware."
-    why: >
-      Exactly the kind of content search engines bury and practitioners need. Chinese-language
-      pi0.5 recipes are systematically better documented than English ones because the
-      community around them is larger.
-    maturity: research
-    verified: 2026-09
-    tags: [chinese, pi05, fine-tuning, deployment, walkthrough]
-  - id: pi05-xarm-tutorial
-    name: "dzj441/pi05XarmTutorial"
-    url: "https://github.com/dzj441/pi05XarmTutorial"
-    type: repo
-    what: "Tutorial for running pi0.5 on a UFactory xArm."
-    why: "A concrete worked example of adapting pi0.5 to an arm that is not in the pretraining mix — the exact situation where normalisation and action-space mismatches bite."
-    maturity: research
-    verified: 2026-09
-    tags: [chinese, pi05, fine-tuning, xarm]
-  - id: df-post-training
-    name: "Denghaoyuan123/DF-post-training"
-    url: "https://github.com/Denghaoyuan123/DF-post-training"
-    type: repo
-    what: "Post-training recipes for diffusion-policy-style VLA models."
-    why: "Useful reference point on what post-training actually changes, and how much it costs."
-    maturity: research
-    verified: 2026-09
-    tags: [post-training, diffusion]
-  - id: lerobot-realman
-    name: "Humble2Full/lerobot-realman-vla"
-    url: "https://github.com/Humble2Full/lerobot-realman-vla"
-    type: repo
-    what: "LeRobot-based VLA pipeline applied to a RealMan arm."
-    why: "Another non-reference-embodiment port. Ports like this are where the undocumented assumptions in a codebase become visible."
-    maturity: toy
-    verified: 2026-09
-    tags: [chinese, lerobot, port]
-  - id: xpolicylab
-    name: "MicroAGI-Labs/XPolicyLab"
-    url: "https://github.com/MicroAGI-Labs/XPolicyLab"
-    type: repo
-    what: "Collection of policy implementations (including RDT-1B) under a common interface."
-    why: "Handy for comparing policy families without rewriting your training harness per model."
-    maturity: toy
-    verified: 2026-09
-    tags: [framework, multi-policy]
+- id: openpi
+  name: openpi (Physical Intelligence)
+  url: https://github.com/Physical-Intelligence/openpi
+  type: repo
+  maturity: production
+  verified: 2026-09
+  license: Apache-2.0
+  tags:
+  - framework
+  - pi0
+  - pi05
+  - fine-tuning
+  what: Official implementation of pi0, pi0-FAST and pi0.5 with training configurations and robot inference
+    tools.
+  what_zh: pi0、pi0-FAST 与 pi0.5 的官方实现，包含训练配置和机器人推理工具。
+- id: lerobot
+  name: LeRobot (Hugging Face)
+  url: https://github.com/huggingface/lerobot
+  type: repo
+  maturity: production
+  verified: 2026-09
+  license: Apache-2.0
+  tags:
+  - framework
+  - training
+  - dataset-format
+  what: Robot-learning stack covering hardware, datasets, teleoperation, policy training and rollout.
+  what_zh: 覆盖硬件、数据集、遥操作、策略训练与执行的机器人学习工具栈。
+- id: isaac-gr00t
+  name: NVIDIA Isaac-GR00T
+  url: https://github.com/NVIDIA/Isaac-GR00T
+  type: repo
+  maturity: production
+  verified: 2026-09
+  tags:
+  - framework
+  - foundation-model
+  - nvidia
+  what: NVIDIA vision-language-action models with fine-tuning and evaluation tooling.
+  what_zh: NVIDIA 的视觉语言动作模型及其微调、评测工具。
+- id: openvla
+  name: OpenVLA
+  url: https://github.com/openvla/openvla
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - discrete-actions
+  - openvla
+  what: A 7B vision-language-action model using a language-model backbone and discrete action tokens.
+  what_zh: 使用语言模型主干和离散动作 token 的 7B 视觉语言动作模型。
+- id: openvla-oft
+  name: OpenVLA-OFT
+  url: https://github.com/moojink/openvla-oft
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - fine-tuning
+  - action-chunking
+  what: OpenVLA fine-tuning recipe using parallel decoding, action chunking and continuous actions.
+  what_zh: 采用并行解码、动作分块与连续动作的 OpenVLA 微调配方。
+- id: rdt-1b
+  name: RDT-1B (RoboticsDiffusionTransformer)
+  url: https://github.com/thu-ml/RoboticsDiffusionTransformer
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - bimanual
+  - diffusion
+  what: Diffusion-transformer model for bimanual manipulation with a unified physical action representation.
+  what_zh: 面向双臂操作的扩散 Transformer，使用统一的物理动作表示。
+- id: octo
+  name: Octo
+  url: https://github.com/octo-models/octo
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - small-model
+  what: Transformer policy trained on Open X-Embodiment with flexible observation and action spaces.
+  what_zh: 在 Open X-Embodiment 上训练的 Transformer 策略，支持灵活的观测与动作空间。
+- id: fluxvla
+  name: FluxVLA
+  url: https://github.com/FluxVLA/FluxVLA
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - platform
+  what: Engineering platform connecting VLA data processing, training and deployment.
+  what_zh: 连接 VLA 数据处理、训练与部署的工程平台。
+- id: rlinf
+  name: RLinf
+  url: https://github.com/RLinf/RLinf
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - rl
+  - pi0
+  - worked-example
+  what: Reinforcement-learning infrastructure with embodied-model training and real-robot examples.
+  what_zh: 提供具身模型训练与真实机器人示例的强化学习基础设施。
+- id: vla-foundry
+  name: TRI-ML/vla_foundry
+  url: https://github.com/TRI-ML/vla_foundry
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - framework
+  - training
+  what: Toyota Research Institute toolkit for VLA training and evaluation.
+  what_zh: Toyota Research Institute 的 VLA 训练与评测工具集。
+- id: openpi-tool
+  name: Isaiah-WU/Openpi_tool — pi05 fine-tuning and real-robot deployment
+  url: https://github.com/Isaiah-WU/Openpi_tool
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - chinese
+  - pi05
+  - fine-tuning
+  - deployment
+  - walkthrough
+  what: Chinese tutorials and tools for pi0.5 fine-tuning and real-robot deployment.
+  what_zh: 用于 pi0.5 微调与真机部署的中文教程和工具。
+- id: pi05-xarm-tutorial
+  name: dzj441/pi05XarmTutorial
+  url: https://github.com/dzj441/pi05XarmTutorial
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - chinese
+  - pi05
+  - fine-tuning
+  - xarm
+  what: Tutorial for deploying pi0.5 on a UFactory xArm.
+  what_zh: 将 pi0.5 部署到 UFactory xArm 的教程。
+- id: df-post-training
+  name: Denghaoyuan123/DF-post-training
+  url: https://github.com/Denghaoyuan123/DF-post-training
+  type: repo
+  maturity: research
+  verified: 2026-09
+  tags:
+  - post-training
+  - diffusion
+  what: Post-training recipes for diffusion-based VLA policies.
+  what_zh: 基于扩散的 VLA 策略后训练配方。
+- id: lerobot-realman
+  name: Humble2Full/lerobot-realman-vla
+  url: https://github.com/Humble2Full/lerobot-realman-vla
+  type: repo
+  maturity: toy
+  verified: 2026-09
+  tags:
+  - chinese
+  - lerobot
+  - port
+  what: LeRobot-based learning and deployment pipeline for a RealMan arm.
+  what_zh: 基于 LeRobot 的 RealMan 机械臂学习与部署流程。
+- id: xpolicylab
+  name: MicroAGI-Labs/XPolicyLab
+  url: https://github.com/MicroAGI-Labs/XPolicyLab
+  type: repo
+  maturity: toy
+  verified: 2026-09
+  tags:
+  - framework
+  - multi-policy
+  what: Multiple robot-policy implementations exposed through a shared interface.
+  what_zh: 通过统一接口提供多种机器人策略实现。
