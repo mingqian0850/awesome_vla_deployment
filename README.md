@@ -4,7 +4,7 @@
 
 中文 · [English](README.en.md)
 
-VLA（Vision-Language-Action，视觉语言动作模型）根据图像、任务指令及可选机器人状态预测动作。本仓库提供基础概念、数据与微调流程、部署教程、检查表和 164 条资源。
+VLA（Vision-Language-Action，视觉语言动作模型）根据图像、任务指令及可选机器人状态预测动作。本仓库提供基础概念、数据与微调流程、部署教程、检查表和 168 条资源。
 
 ## 开始学习
 
@@ -17,6 +17,8 @@ VLA（Vision-Language-Action，视觉语言动作模型）根据图像、任务�
 | 5. 检查运行条件 | [运行防护](docs/zh/43-safety.md) | 限位、超时与接管的验证记录 |
 
 ## 查阅与实践
+
+- [第一步：采什么数据、如何读懂一条示教](docs/zh/02-data-sources.md)：五类采集路线与无需训练的阅读练习。
 
 - [资源目录](docs/zh/resources.md)：数据、模型、微调、部署、评测与延伸课程。
 - [排错手册](docs/zh/troubleshooting.md)：12 类常见现象的检查与处理步骤。

@@ -232,6 +232,42 @@ AgiBot World 描述试采集、操作员校验、标注及根据执行失败改�
 
 研究操作策略的泛化能力如何随环境、物体与示教多样性变化。
 
+<a id="egomimic-data"></a>
+### [EgoMimic — human and robot data processing](https://github.com/SimarKareer/EgoMimic)
+
+代码仓库 · 研究阶段
+
+追踪的人类 Aria 示教与机器人遥操作数据的处理及训练代码。
+
+**使用条件：** 人类和机器人观测需要对齐，不是任意视频到机器人动作的转换。
+
+<a id="ego-exo4d-skills"></a>
+### [Ego-Exo4D — human skill understanding](https://docs.ego-exo4d-data.org/)
+
+数据集 · 研究阶段
+
+用于技能理解的同步人类第一／第三视角观测与活动标注。
+
+**使用条件：** 没有目标机器人控制命令标签；检查子集标注和访问条款。
+
+<a id="agibot-world-data"></a>
+### [AgiBot World — released data and visualization](https://github.com/OpenDriveLab/AgiBot-World)
+
+代码仓库 · 研究阶段
+
+机器人操作数据、可视化与已发布学习组件的官方入口。
+
+**使用条件：** 固定数据版本；不能等同于 G2 工厂数据集或完整双足行走数据。
+
+<a id="gr1-teleop-sim-data"></a>
+### [GR-1 — simulated tabletop teleoperation](https://huggingface.co/datasets/nvidia/PhysicalAI-Robotics-GR00T-Teleop-Sim)
+
+数据集 · 研究阶段
+
+可浏览 state/action 字段的 GR-1 仿真示教。
+
+**使用条件：** 数据卡标注 CC-BY-NC-4.0；仿真数据不是真实生产证据。
+
 <a id="training"></a>
 ## 模型与训练框架
 
@@ -668,11 +704,15 @@ OpenVLA 作者回放 LIBERO 示教，并剔除不满足任务成功标准的 epi
 RTC 执行步数、引导权重、前缀注意力与推理延迟的配置参考。
 
 <a id="lerobot-async"></a>
-### [LeRobot — asynchronous inference (policy server / robot client)](https://github.com/huggingface/lerobot/blob/main/docs/source/async.mdx)
+### [LeRobot — legacy asynchronous inference (pinned reference)](https://github.com/huggingface/lerobot/blob/7e60cd26f7f8a38bb8df8fc5e2966a93f1364f47/docs/source/async.mdx)
 
-文档 · 有真机使用记录
+文档 · 历史参考
 
 通过策略服务器与机器人客户端实现异步推理和动作传输。
+
+**使用条件：** 历史 PolicyServer/RobotClient 文档。当前 main 已移除该旧模块，改用 rollout 下的远程推理；代码与文档必须匹配版本。
+
+补充来源: [↗ 1](https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx)
 
 <a id="lerobot-rollout"></a>
 ### [LeRobot — rollout strategies and fleet operations](https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx)

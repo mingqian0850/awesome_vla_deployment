@@ -396,3 +396,55 @@ entries:
   - environments
   what: Studies how manipulation generalization changes with environment, object and demonstration diversity.
   what_zh: 研究操作策略的泛化能力如何随环境、物体与示教多样性变化。
+- id: egomimic-data
+  name: EgoMimic — human and robot data processing
+  url: https://github.com/SimarKareer/EgoMimic
+  type: repo
+  maturity: research
+  verified: '2026-10-20'
+  tags:
+  - data
+  - study
+  what: Processing and training code for tracked human Aria demonstrations and teleoperated robot data.
+  what_zh: 追踪的人类 Aria 示教与机器人遥操作数据的处理及训练代码。
+  notes: Human and robot observations require alignment; this is not arbitrary video-to-robot conversion.
+  notes_zh: 人类和机器人观测需要对齐，不是任意视频到机器人动作的转换。
+- id: ego-exo4d-skills
+  name: Ego-Exo4D — human skill understanding
+  url: https://docs.ego-exo4d-data.org/
+  type: dataset
+  maturity: research
+  verified: '2026-10-20'
+  tags:
+  - data
+  - study
+  what: Synchronized human ego/exo observations and skill annotations for activity understanding.
+  what_zh: 用于技能理解的同步人类第一／第三视角观测与活动标注。
+  notes: No target-robot command labels; check subset annotations and access terms.
+  notes_zh: 没有目标机器人控制命令标签；检查子集标注和访问条款。
+- id: agibot-world-data
+  name: AgiBot World — released data and visualization
+  url: https://github.com/OpenDriveLab/AgiBot-World
+  type: repo
+  maturity: research
+  verified: '2026-10-20'
+  tags:
+  - data
+  - study
+  what: Official entry point for robot manipulation data, visualization and released learning components.
+  what_zh: 机器人操作数据、可视化与已发布学习组件的官方入口。
+  notes: Pin the data release; do not identify it with a G2 factory dataset or full bipedal locomotion data.
+  notes_zh: 固定数据版本；不能等同于 G2 工厂数据集或完整双足行走数据。
+- id: gr1-teleop-sim-data
+  name: GR-1 — simulated tabletop teleoperation
+  url: https://huggingface.co/datasets/nvidia/PhysicalAI-Robotics-GR00T-Teleop-Sim
+  type: dataset
+  maturity: research
+  verified: '2026-10-20'
+  tags:
+  - data
+  - study
+  what: Simulated GR-1 demonstrations with a browsable state/action schema.
+  what_zh: 可浏览 state/action 字段的 GR-1 仿真示教。
+  notes: CC-BY-NC-4.0 according to the dataset card; simulation data is not real production evidence.
+  notes_zh: 数据卡标注 CC-BY-NC-4.0；仿真数据不是真实生产证据。

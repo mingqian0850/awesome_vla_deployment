@@ -12,6 +12,10 @@
 
 ## Data contract
 
+- [ ] The capture route is explicit: human video, tracked demonstration, handheld tool, robot teleoperation or simulation.
+- [ ] Measurements, estimates, retargeted references, commands and feedback are distinct; unknown values are not zero.
+- [ ] Process completion and product quality are separate; unsupported contact measurements remain unknown.
+
 - [ ] State/action dimensions, joint ordering, units and coordinate frames are written down.
 - [ ] Absolute/delta/velocity actions and gripper polarity are confirmed.
 - [ ] Camera names, views, intrinsics, extrinsics and image format are recorded.

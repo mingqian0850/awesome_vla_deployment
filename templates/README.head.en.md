@@ -18,6 +18,8 @@ A vision-language-action (VLA) model predicts actions from images, task instruct
 
 ## Reference and practice
 
+- [Step one: capture routes and reading a demonstration](docs/02-data-sources.md): five data routes and an exercise without training.
+
 - [Resource catalog](docs/resources.md): data, models, fine-tuning, deployment, evaluation and further courses.
 - [Troubleshooting](docs/troubleshooting.md): checks and actions for 12 common symptoms.
 - [Before collecting data](checklists/before-collecting-data.md).

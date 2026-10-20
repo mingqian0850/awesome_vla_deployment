@@ -18,6 +18,8 @@ VLA（Vision-Language-Action，视觉语言动作模型）根据图像、任务�
 
 ## 查阅与实践
 
+- [第一步：采什么数据、如何读懂一条示教](docs/zh/02-data-sources.md)：五类采集路线与无需训练的阅读练习。
+
 - [资源目录](docs/zh/resources.md)：数据、模型、微调、部署、评测与延伸课程。
 - [排错手册](docs/zh/troubleshooting.md)：12 类常见现象的检查与处理步骤。
 - [采集前检查表](checklists/zh/before-collecting-data.md)。

@@ -258,11 +258,11 @@ entries:
   what: Reference for RTC execution horizon, guidance weight, prefix attention and inference delay.
   what_zh: RTC 执行步数、引导权重、前缀注意力与推理延迟的配置参考。
 - id: lerobot-async
-  name: LeRobot — asynchronous inference (policy server / robot client)
-  url: https://github.com/huggingface/lerobot/blob/main/docs/source/async.mdx
+  name: LeRobot — legacy asynchronous inference (pinned reference)
+  url: https://github.com/huggingface/lerobot/blob/7e60cd26f7f8a38bb8df8fc5e2966a93f1364f47/docs/source/async.mdx
   type: docs
-  maturity: production
-  verified: 2026-09
+  maturity: abandoned
+  verified: '2026-10-21'
   tags:
   - async
   - architecture
@@ -270,6 +270,11 @@ entries:
   - reference
   what: Policy-server and robot-client implementation for asynchronous inference and action delivery.
   what_zh: 通过策略服务器与机器人客户端实现异步推理和动作传输。
+  notes: Historical PolicyServer/RobotClient documentation. Current main retired this legacy module in favor of
+    remote inference under rollout; use matching code and documentation versions.
+  notes_zh: 历史 PolicyServer/RobotClient 文档。当前 main 已移除该旧模块，改用 rollout 下的远程推理；代码与文档必须匹配版本。
+  sources:
+  - https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx
 - id: lerobot-rollout
   name: LeRobot — rollout strategies and fleet operations
   url: https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx

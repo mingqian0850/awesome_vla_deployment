@@ -4,7 +4,7 @@
 
 [中文](README.md) · English
 
-A vision-language-action (VLA) model predicts actions from images, task instructions and optional robot state. This repository provides foundational concepts, data and fine-tuning workflows, deployment guides, checklists and 164 resources.
+A vision-language-action (VLA) model predicts actions from images, task instructions and optional robot state. This repository provides foundational concepts, data and fine-tuning workflows, deployment guides, checklists and 168 resources.
 
 ## Start learning
 
@@ -17,6 +17,8 @@ A vision-language-action (VLA) model predicts actions from images, task instruct
 | 5. Check operating conditions | [Runtime protection](docs/43-safety.md) | Validated limits, timeout responses and handover behavior |
 
 ## Reference and practice
+
+- [Step one: capture routes and reading a demonstration](docs/02-data-sources.md): five data routes and an exercise without training.
 
 - [Resource catalog](docs/resources.md): data, models, fine-tuning, deployment, evaluation and further courses.
 - [Troubleshooting](docs/troubleshooting.md): checks and actions for 12 common symptoms.

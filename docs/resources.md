@@ -232,6 +232,42 @@ paper · research
 
 Studies how manipulation generalization changes with environment, object and demonstration diversity.
 
+<a id="egomimic-data"></a>
+### [EgoMimic — human and robot data processing](https://github.com/SimarKareer/EgoMimic)
+
+repo · research
+
+Processing and training code for tracked human Aria demonstrations and teleoperated robot data.
+
+**Use conditions：** Human and robot observations require alignment; this is not arbitrary video-to-robot conversion.
+
+<a id="ego-exo4d-skills"></a>
+### [Ego-Exo4D — human skill understanding](https://docs.ego-exo4d-data.org/)
+
+dataset · research
+
+Synchronized human ego/exo observations and skill annotations for activity understanding.
+
+**Use conditions：** No target-robot command labels; check subset annotations and access terms.
+
+<a id="agibot-world-data"></a>
+### [AgiBot World — released data and visualization](https://github.com/OpenDriveLab/AgiBot-World)
+
+repo · research
+
+Official entry point for robot manipulation data, visualization and released learning components.
+
+**Use conditions：** Pin the data release; do not identify it with a G2 factory dataset or full bipedal locomotion data.
+
+<a id="gr1-teleop-sim-data"></a>
+### [GR-1 — simulated tabletop teleoperation](https://huggingface.co/datasets/nvidia/PhysicalAI-Robotics-GR00T-Teleop-Sim)
+
+dataset · research
+
+Simulated GR-1 demonstrations with a browsable state/action schema.
+
+**Use conditions：** CC-BY-NC-4.0 according to the dataset card; simulation data is not real production evidence.
+
 <a id="training"></a>
 ## Models and training frameworks
 
@@ -668,11 +704,15 @@ docs · hardware use reported
 Reference for RTC execution horizon, guidance weight, prefix attention and inference delay.
 
 <a id="lerobot-async"></a>
-### [LeRobot — asynchronous inference (policy server / robot client)](https://github.com/huggingface/lerobot/blob/main/docs/source/async.mdx)
+### [LeRobot — legacy asynchronous inference (pinned reference)](https://github.com/huggingface/lerobot/blob/7e60cd26f7f8a38bb8df8fc5e2966a93f1364f47/docs/source/async.mdx)
 
-docs · hardware use reported
+docs · archived reference
 
 Policy-server and robot-client implementation for asynchronous inference and action delivery.
+
+**Use conditions：** Historical PolicyServer/RobotClient documentation. Current main retired this legacy module in favor of remote inference under rollout; use matching code and documentation versions.
+
+Additional sources: [↗ 1](https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx)
 
 <a id="lerobot-rollout"></a>
 ### [LeRobot — rollout strategies and fleet operations](https://github.com/huggingface/lerobot/blob/main/docs/source/inference.mdx)
