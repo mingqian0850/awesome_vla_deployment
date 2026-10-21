@@ -2,6 +2,8 @@
 
 [Home](../README.en.md) · [中文](zh/01-data-and-training.md)
 
+To check whether your data can feed a trainer, see [formats and acceptance](dataset-format-decisions.md); for logging tools, see [training monitoring](training-monitoring.md).
+
 ## Define the task before recording
 
 Write a task instruction, initial-state distribution and observable success condition. For example, “place the red block in the tray” needs a definition of which placements count, when the episode ends, and how unsuccessful attempts are labeled.

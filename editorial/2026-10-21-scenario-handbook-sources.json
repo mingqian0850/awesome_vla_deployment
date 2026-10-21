@@ -1,0 +1,57 @@
+{
+  "checked_on": "2026-10-21",
+  "sources": {
+    "lerobot": {
+      "repo": "huggingface/lerobot",
+      "revision": "463202b1b005e8802343a282661eb26ef27a160c",
+      "paths": [
+        "docs/source/lerobot-dataset-v3.mdx",
+        "docs/source/inference.mdx",
+        "src/lerobot/configs/train.py",
+        "src/lerobot/configs/default.py",
+        "src/lerobot/datasets/utils.py"
+      ]
+    },
+    "openpi": {
+      "repo": "Physical-Intelligence/openpi",
+      "revision": "215abfb217dbac7d5f1273282331b9b1866c0479",
+      "paths": [
+        "README.md",
+        "pyproject.toml",
+        "examples/aloha_sim/README.md",
+        "examples/aloha_real/README.md",
+        "src/openpi/training/config.py"
+      ]
+    },
+    "gr00t": {
+      "repo": "NVIDIA/Isaac-GR00T",
+      "revision": "dac54b313160c201c450f97df0fd74ebd379c892",
+      "paths": [
+        "getting_started/finetune_new_embodiment.md",
+        "gr00t/configs/finetune_config.py",
+        "README.md",
+        "getting_started/data_preparation.md"
+      ]
+    },
+    "wandb": {
+      "repo": "wandb/wandb",
+      "revision": "dda9f931d389c9419171b01eb64ec7233f7d249a",
+      "paths": [
+        "README.md"
+      ]
+    },
+    "rlds": {
+      "repo": "google-research/rlds",
+      "revision": "b35dac3a6b73396b0cb8773095999c4b5d70947c",
+      "paths": [
+        "README.md"
+      ]
+    }
+  },
+  "additional_docs": [
+    "https://docs.pytorch.org/docs/2.14/tensorboard.html",
+    "https://mlflow.org/docs/latest/ml/tracking/",
+    "https://robomimic.github.io/docs/datasets/overview.html"
+  ],
+  "scope": "Source inspection and documentation validation; no training, hardware rollout, or monitoring service deployed."
+}

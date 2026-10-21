@@ -2,6 +2,8 @@
 
 [首页](../../README.md) · [English](../01-data-and-training.md)
 
+要判断自己的数据是否能直接训练，先查[数据格式与验收](dataset-format-decisions.md)；选择日志工具见[训练监控](training-monitoring.md)。
+
 ## 采集前定义任务
 
 写清任务指令、初始状态分布和可观测的成功条件。例如“把红色积木放进托盘”需要明确哪些放置情况算成功、何时结束 episode，以及如何标记失败尝试。

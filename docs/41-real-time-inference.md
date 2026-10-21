@@ -2,6 +2,8 @@
 
 [Home](../README.en.md) · [中文](zh/41-real-time-inference.md)
 
+Choose for your conditions first: [robot pauses and inference choices](deployment-decisions.md). This page explains the timing mechanisms.
+
 ## Three measurements
 
 | Metric | Start → end |

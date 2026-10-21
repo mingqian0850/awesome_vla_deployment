@@ -2,6 +2,8 @@
 
 [首页](../../README.md) · [English](../41-real-time-inference.md)
 
+先按具体条件选择方案：[真机停顿与推理方式查表](deployment-decisions.md)。本页解释时序原理。
+
 ## 三种测量
 
 | 指标 | 起点 → 终点 |
